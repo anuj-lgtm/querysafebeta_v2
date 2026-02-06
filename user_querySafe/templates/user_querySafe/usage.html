@@ -1,0 +1,383 @@
+{% extends 'user_querySafe/include/base.html' %}
+{% load static %}
+
+{% block title %}Usage Statistics | {{ block.super }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Account Level Usage -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-gradient-dark border-0 overflow-hidden position-relative">
+                <div class="position-absolute top-0 end-0 w-50 h-100 d-none d-md-block header-icon">
+                    <div class="position-absolute top-50 end-0 transform-translate-y-50">
+                        <i class="material-symbols-rounded">analytics</i>
+                    </div>
+                </div>
+                <div class="card-body p-4">
+                    <div class="row align-items-center">
+                        <div class="col">
+                            <h4 class="text-white mb-2 fw-bold">Account Usage</h4>
+                            <p class="text-white-50 mb-4">Track your account resource utilization and limits</p>
+                            {% if active_plan %}
+                            <div class="d-flex flex-wrap gap-3">
+                                <!-- Current Plan Badge -->
+                                <div class="badge bg-white bg-opacity-20 p-3">
+                                    <div class="d-flex align-items-center mb-2">
+                                        <i class="material-symbols-rounded text-white me-2" style="font-size: 28px;">workspace_premium</i>
+                                        <div>
+                                            <small class="d-block text-white-50">Current Plan</small>
+                                            <span class="text-white fw-semibold fs-6">{{ active_plan.plan_name }}</span>
+                                        </div>
+                                    </div>
+                                    <div class="mt-2 pt-2 border-top border-white border-opacity-10">
+                                        <div class="d-flex align-items-center text-white-50">
+                                            <i class="material-symbols-rounded me-2" style="font-size: 18px;">check_circle</i>
+                                            <small>{{ active_plan.no_query }} queries in plan</small>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Expiry Date Badge -->
+                                <div class="badge bg-white bg-opacity-20 p-3">
+                                    <div class="d-flex align-items-center mb-2">
+                                        <i class="material-symbols-rounded text-white me-2" style="font-size: 28px;">event</i>
+                                        <div>
+                                            <small class="d-block text-white-50">Valid Till</small>
+                                            <span class="text-white fw-semibold fs-6">{{ expire_date|date:"M j, Y" }}</span>
+                                        </div>
+                                    </div>
+                                    <div class="mt-2 pt-2 border-top border-white border-opacity-10">
+                                        <div class="d-flex align-items-center text-white-50">
+                                            <i class="material-symbols-rounded me-2" style="font-size: 18px;">schedule</i>
+                                            <small>{{ expire_date|timeuntil }} remaining</small>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Document Limit Badge -->
+                                <div class="badge bg-white bg-opacity-20 p-3">
+                                    <div class="d-flex align-items-center mb-2">
+                                        <i class="material-symbols-rounded text-white me-2" style="font-size: 28px;">folder</i>
+                                        <div>
+                                            <small class="d-block text-white-50">Document Limit</small>
+                                            <span class="text-white fw-semibold fs-6">{{ active_plan.doc_size_limit }} MB</span>
+                                        </div>
+                                    </div>
+                                    <div class="mt-2 pt-2 border-top border-white border-opacity-10">
+                                        <div class="d-flex align-items-center text-white-50">
+                                            <i class="material-symbols-rounded me-2" style="font-size: 18px;">description</i>
+                                            <small>{{ active_plan.no_of_docs }} docs per bot</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% else %}
+                            <div class="text-center py-5">
+                                <div class="mb-4">
+                                    <i class="material-symbols-rounded display-1 text-muted">workspace_premium</i>
+                                </div>
+                                <h5 class="text-muted mb-3">No Active Plan</h5>
+                                <p class="text-muted mb-4">Select a subscription plan to start tracking your usage</p>
+                                <a href="{% url 'subscriptions' %}" class="btn btn-primary">
+                                    <i class="material-symbols-rounded align-middle me-2">add_circle</i>
+                                    Select Plan
+                                </a>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Usage Stats Cards -->
+    <div class="row g-4 mb-4">
+        <div class="col-sm-6 col-xl-3">
+            <div class="card border-0 shadow-sm h-100 overflow-hidden">
+                <div class="position-absolute top-0 end-0 mt-3 me-3">
+                    <div class="icon-box bg-primary bg-opacity-10 rounded-circle">
+                        <i class="material-symbols-rounded text-primary">smart_toy</i>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <h6 class="text-muted mb-2">Total Chatbots</h6>
+                    <div class="d-flex align-items-baseline mb-3">
+                        <h3 class="mb-0 me-2">{{ total_chatbots }}</h3>
+                        <small class="text-muted">/ {{ no_of_bots_limit }}</small>
+                    </div>
+                    <div class="progress" style="height: 6px;">
+                        <div class="progress-bar bg-primary" style="width: {{ chatbot_percentage }}%;" role="progressbar"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chatbot Usage Table -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-transparent p-4 d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="mb-1">Chatbot Usage</h5>
+                        <p class="text-muted small mb-0">Track usage statistics for each chatbot</p>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table align-middle mb-0">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th class="px-4 py-3">Chatbot</th>
+                                    <th class="px-4 py-3">Queries</th>
+                                    <th class="px-4 py-3">Documents</th>
+                                    <th class="px-4 py-3">Size Limit</th>
+                                    <th class="px-4 py-3" colspan="2">Usage</th>
+                                </tr>
+                            </thead>
+                            <tbody class="border-top-0">
+                                {% for stat in chatbot_stats %}
+                                <tr>
+                                    <td class="px-4 py-3">
+                                        <div class="d-flex align-items-center">
+                                            <div class="me-3">
+                                                <div class="avatar avatar-md rounded-circle overflow-hidden">
+                                                    {% if stat.chatbot.logo %}
+                                                        <img src="{{ stat.chatbot.logo.url }}" alt="{{ stat.chatbot.name }}" class="w-100 h-100 object-fit-cover">
+                                                    {% else %}
+                                                        <img src="{% get_media_prefix %}chatbot_logos/default.png" alt="{{ stat.chatbot.name }}" class="w-100 h-100 object-fit-cover">
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <h6 class="mb-0">{{ stat.chatbot.name }}</h6>
+                                                <small class="text-muted">ID: {{ stat.chatbot.chatbot_id }}</small>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <h6 class="mb-1">{{ stat.messages_count }} / {{ stat.messages_limit }}</h6>
+                                        <div class="progress" style="height: 4px; width: 120px;">
+                                            <div class="progress-bar bg-info" style="width: {{ stat.messages_percentage }}%;"></div>
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <h6 class="mb-1">{{ stat.documents_count }} / {{ stat.documents_limit }}</h6>
+                                        <div class="progress" style="height: 4px; width: 120px;">
+                                            <div class="progress-bar bg-warning" style="width: {{ stat.documents_percentage }}%;"></div>
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <span class="badge bg-light text-dark">
+                                            <i class="material-symbols-rounded align-middle me-1">folder</i>
+                                            {{ stat.doc_size_limit }} MB
+                                        </span>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <div class="d-flex align-items-center gap-3">
+                                            <div style="width: 100px;">
+                                                <small class="text-muted d-block mb-1">Queries</small>
+                                                <div class="progress" style="height: 4px;">
+                                                    <div class="progress-bar bg-info" style="width: {{ stat.messages_percentage }}%;"></div>
+                                                </div>
+                                            </div>
+                                            <div style="width: 100px;">
+                                                <small class="text-muted d-block mb-1">Documents</small>
+                                                <div class="progress" style="height: 4px;">
+                                                    <div class="progress-bar bg-warning" style="width: {{ stat.documents_percentage }}%;"></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="6" class="text-center py-5">
+                                        <div class="py-4">
+                                            <i class="material-symbols-rounded display-4 text-muted mb-3">smart_toy</i>
+                                            <h6 class="text-muted mb-2">No Chatbots Created</h6>
+                                            <p class="text-muted mb-0">Create your first chatbot to start tracking usage</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add custom styles -->
+    <style>
+        /* Icon Box Styling */
+        .icon-box {
+            width: 45px;
+            height: 45px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 12px;
+        }
+
+        /* Material Icons Styling */
+        .material-symbols-rounded {
+            font-variation-settings:
+                'FILL' 1,
+                'wght' 500,
+                'GRAD' 0,
+                'opsz' 48;
+            font-size: 24px;
+        }
+
+        /* Header Icon */
+        .header-icon .material-symbols-rounded {
+            font-size: 15rem;
+            color: rgba(255, 255, 255, 0.1);
+        }
+
+        /* Background Colors with proper opacity */
+        .bg-primary.bg-opacity-10 {
+            background-color: rgba(13, 110, 253, 0.1) !important;
+        }
+
+        .bg-success.bg-opacity-10 {
+            background-color: rgba(25, 135, 84, 0.1) !important;
+        }
+
+        .bg-info.bg-opacity-10 {
+            background-color: rgba(13, 202, 240, 0.1) !important;
+        }
+
+        /* Icon Text Colors */
+        .text-primary {
+            color: #0d6efd !important;
+        }
+
+        .text-success {
+            color: #198754 !important;
+        }
+
+        .text-info {
+            color: #0dcaf0 !important;
+        }
+
+        /* Badge with Icon */
+        .badge .material-symbols-rounded {
+            font-size: 20px;
+            font-variation-settings:
+                'FILL' 0,
+                'wght' 400;
+        }
+
+        /* Empty State Icon */
+        .display-4.material-symbols-rounded {
+            font-size: 64px;
+            color: #6c757d;
+            font-variation-settings:
+                'FILL' 0,
+                'wght' 300;
+        }
+
+        /* Progress bar styling */
+        .progress {
+            border-radius: 10px;
+            overflow: hidden;
+            background-color: rgba(0, 0, 0, 0.05);
+        }
+
+        .progress-bar {
+            transition: width 0.6s ease;
+        }
+
+        /* Card hover effect */
+        .card {
+            transition: transform 0.2s;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+        }
+
+        /* Badge styling */
+        .badge {
+            font-weight: 500;
+        }
+
+        /* Table styling */
+        .table > :not(caption) > * > * {
+            background-color: transparent;
+        }
+
+        /* Header badge styling */
+        .bg-white.bg-opacity-20 {
+            background-color: rgba(255, 255, 255, 0.2) !important;
+        }
+
+        .bg-white.bg-opacity-20 .material-symbols-rounded {
+            color: rgba(255, 255, 255, 0.9) !important;
+        }
+
+        /* Avatar sizing */
+        .avatar {
+            position: relative;
+            display: inline-block;
+        }
+        
+        .avatar-md {
+            width: 45px;
+            height: 45px;
+        }
+        
+        .object-fit-cover {
+            object-fit: cover;
+        }
+        
+        /* Image border */
+        .avatar img {
+            border: 2px solid rgba(255, 255, 255, 0.8);
+        }
+        
+        /* Hover effect */
+        .avatar:hover img {
+            transform: scale(1.05);
+            transition: transform 0.2s ease;
+        }
+
+        /* Plan Badge Styling */
+        .badge.bg-white.bg-opacity-20 {
+            min-width: 300px;
+            text-align: left;
+            font-weight: normal;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .badge.bg-white.bg-opacity-20:hover {
+            background-color: rgba(255, 255, 255, 0.25) !important;
+            transform: translateY(-2px);
+            transition: all 0.3s ease;
+        }
+
+        .border-white.border-opacity-10 {
+            border-color: rgba(255, 255, 255, 0.1) !important;
+        }
+
+        .fs-6 {
+            font-size: 1rem !important;
+        }
+
+        /* Material Icons in Badges */
+        .badge .material-symbols-rounded {
+            font-variation-settings:
+                'FILL' 1,
+                'wght' 400,
+                'GRAD' 0,
+                'opsz' 48;
+        }
+    </style>
+</div>
+{% endblock %}

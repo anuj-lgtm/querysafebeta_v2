@@ -1,0 +1,266 @@
+{% extends 'user_querySafe/include/base.html' %}
+{% block title %}Help & Support | {{ block.super }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+  {% if messages %}
+  <div class="row mb-4">
+    <div class="col-12">
+      {% for message in messages %}
+      <div
+        class="alert alert-{% if message.tags == 'error' %}danger{% elif message.tags == 'warning' %}warning{% else %}success{% endif %} alert-dismissible text-white fade show shadow-sm"
+        role="alert">
+        <span class="text-sm">{{ message }}</span>
+        <button type="button" class="btn-close text-lg py-3 opacity-10" data-bs-dismiss="alert" aria-label="Close">
+          <span aria-hidden="true">×</span>
+        </button>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Page Header -->
+  <div class="row mb-4">
+    <div class="col-12 text-center">
+      <h2 class="text-dark mb-0">How Can We Help You Today?</h2>
+      <p class="text-muted mt-2">Our support team is here to assist you with any questions or concerns</p>
+    </div>
+  </div>
+
+  <div class="row g-4">
+    <!-- Form Section -->
+    <div class="col-lg-8">
+      <div class="card shadow-lg border-0 overflow-hidden">
+        <!-- Card Header -->
+        <div class="card-header bg-gradient-primary p-5 position-relative">
+          <div class="text-center text-white position-relative z-index-1">
+            <h3 class="mb-2 text-white">Send Us a Message</h3>
+            <p class="mb-0 opacity-8">We'll get back to you as soon as possible</p>
+          </div>
+          <div class="position-absolute top-0 start-0 w-100 h-100 opacity-1"
+            style="background-image: url('data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 1440 320\'%3E%3Cpath fill=\'%23ffffff\' fill-opacity=\'0.1\' d=\'M0,96L48,112C96,128,192,160,288,186.7C384,213,480,235,576,213.3C672,192,768,128,864,128C960,128,1056,192,1152,208C1248,224,1344,192,1392,176L1440,160L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z\'%3E%3C/path%3E%3C/svg%3E');">
+          </div>
+        </div>
+
+        <!-- Card Body -->
+        <div class="card-body p-5">
+          <form method="POST" action="{% url 'help_support' %}">
+            {% csrf_token %}
+            <div class="row">
+              <div class="col-md-6 mb-4">
+                <div class="form-group">
+                  <label for="name" class="form-label fw-bold text-dark">Your Name</label>
+                  <div class="input-group input-group-outline">
+                    <input type="text" class="form-control border px-3 py-2 bg-light text-secondary" id="name" value="{{ user.name }}" readonly style="cursor: not-allowed; opacity: 0.7;">
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-6 mb-4">
+                <div class="form-group">
+                  <label for="email" class="form-label fw-bold text-dark">Your Email</label>
+                  <div class="input-group input-group-outline">
+                    <input type="email" class="form-control border px-3 py-2 bg-light text-secondary" id="email" value="{{ user.email }}"
+                      readonly style="cursor: not-allowed; opacity: 0.7;">
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-group mb-4">
+              <label for="subject" class="form-label fw-bold text-dark">Subject</label>
+              <div class="input-group input-group-outline">
+                <input type="text" class="form-control border px-3 py-2" id="subject" name="subject"
+                  placeholder="Enter the subject" required>
+              </div>
+            </div>
+
+            <div class="form-group mb-4">
+              <label for="message" class="form-label fw-bold text-dark">Your Message</label>
+              <div class="input-group input-group-outline">
+                <textarea class="form-control border px-3 py-2" id="message" name="message" rows="6"
+                  placeholder="Describe your issue or question..." required></textarea>
+              </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-lg w-100 mt-4">
+              <i class="material-symbols-rounded align-middle me-2">send</i>
+              Send Message
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Contact Info Section -->
+    <div class="col-lg-4">
+      <div class="card shadow-lg border-0">
+        <div class="card-header bg-gradient-dark text-white p-5 position-relative">
+          <div class="text-center position-relative z-index-1">
+            <h3 class="mb-2 text-white">Contact Information</h3>
+            <p class="mb-0 opacity-8">Get in touch with us</p>
+          </div>
+        </div>
+        <div class="card-body p-3">
+          <div class="d-flex flex-column gap-4">
+            <div class="info-box p-4 bg-gray-100 rounded-3">
+              <div class="d-flex align-items-center">
+                <div class="icon-box bg-primary text-white rounded-circle p-3 me-3">
+                  <i class="material-symbols-rounded">mail</i>
+                </div>
+                <div>
+                  <h6 class="mb-1">Email Us</h6>
+                  <p class="mb-0 text-primary">sales@metricvibes.com</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="info-box p-2 bg-gray-100 rounded-3">
+              <div class="d-flex align-items-center">
+                <div class="icon-box bg-primary text-white rounded-circle p-3 me-3">
+                  <i class="material-symbols-rounded">call</i>
+                </div>
+                <div>
+                  <h6 class="mb-1">Call Us</h6>
+                  <p class="mb-0 text-dark font-weight-bold">+91 75036 59606</p>
+                  <p class="mb-0 text-xs text-muted">Mon-Fri, 10:00 AM - 7:00 PM</p>
+                </div>
+              </div>
+            </div>
+
+
+            <div class="info-box p-2 bg-gray-100 rounded-3">
+              <div class="d-flex align-items-center">
+                <div class="icon-box bg-primary text-white rounded-circle p-3 me-3">
+                  <i class="material-symbols-rounded">location_on</i>
+                </div>
+                <div>
+                  <h6 class="mb-1">Visit Us</h6>
+                  <p class="mb-0">Metric Vibes, AltF Coworking Space, A100, A Block, Sector 58, Noida, Uttar Pradesh
+                    201309</p>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Support Tickets Section -->
+  {% if support_tickets %}
+  <div class="row mt-5">
+    <div class="col-12">
+      <div class="card shadow-lg border-0">
+        <div class="card-header bg-gradient-primary p-4">
+          <h5 class="text-white mb-0">
+            <i class="material-symbols-rounded align-middle me-2">history</i>
+            Your Support Requests
+          </h5>
+        </div>
+        <div class="card-body p-4">
+          <!-- Desktop View: Table -->
+          <div class="table-responsive d-none d-md-block">
+            <table class="table align-items-center mb-0">
+              <thead>
+                <tr>
+                  <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Ticket ID</th>
+                  <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Subject</th>
+                  <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Message</th>
+                  <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Status</th>
+                  <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Created</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for ticket in support_tickets %}
+                <tr>
+                  <td>
+                    <span class="badge bg-secondary">{{ ticket.ticket_id }}</span>
+                  </td>
+                  <td>
+                    <p class="text-sm font-weight-bold mb-0">{{ ticket.subject }}</p>
+                  </td>
+                  <td>
+                    <p class="text-xs text-wrap" style="max-width: 340px;" title="{{ ticket.message }}">
+                      {{ ticket.short_message }}
+                    </p>
+                  </td>
+                  <td>
+                    <span class="badge badge-sm bg-gradient-{{ ticket.badge_color }} text-white">
+                      {{ ticket.status|title }}
+                    </span>
+                  </td>
+                  <td>
+                    <p class="text-xs text-secondary mb-0">{{ ticket.created_at|date:"M d, Y, g:i A" }}</p>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Mobile View: Card Layout -->
+          <div class="d-md-none">
+            <div class="row g-3">
+              {% for ticket in support_tickets %}
+              <div class="col-12">
+                <div class="card border-0 bg-light">
+                  <div class="card-body p-3">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                      <span class="badge bg-secondary">{{ ticket.ticket_id }}</span>
+                      <small class="text-secondary">{{ ticket.created_at|date:"M d, Y" }}</small>
+                    </div>
+                    <h6 class="card-title text-dark fw-bold mb-2">{{ ticket.subject }}</h6>
+                    <p class="card-text text-muted text-sm mb-3">
+                      {{ ticket.short_message }}
+                    </p>
+                    <div>
+                      <span class="badge badge-sm bg-gradient-{{ ticket.badge_color }} text-white">
+                        {{ ticket.status|title }}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+<style>
+  .icon-box {
+    width: 45px;
+    height: 45px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .info-box {
+    transition: transform 0.3s ease;
+  }
+
+  .info-box:hover {
+    transform: translateY(-5px);
+  }
+
+  .form-control {
+    transition: border-color 0.3s ease;
+  }
+
+  .form-control:focus {
+    border-color: #9c27b0;
+    box-shadow: 0 0 0 0.2rem rgba(156, 39, 176, 0.25);
+  }
+
+  .support-hours {
+    background: linear-gradient(195deg, #42424a 0%, #191919 100%);
+  }
+</style>
+{% endblock %}

@@ -1,0 +1,608 @@
+{% extends 'user_querySafe/include/base.html' %}
+{% load static %}
+{% block title %}
+Conversations | {{ block.super }}
+{% endblock %}
+
+{% block extra_css %}
+<style>
+  /* WhatsApp-like conversation layout */
+  .conversations-container {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    gap: 0;
+    height: calc(100vh - 140px);
+    /* Adjusted height to fit viewport */
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  /* Left sidebar - Chatbots list */
+  .chatbots-sidebar {
+    border-right: 1px solid #e0e0e0;
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  .chatbots-header {
+    padding: 12px 16px;
+    border-bottom: 1px solid #e0e0e0;
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: #263238;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  .chatbots-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px 0;
+  }
+
+  .chatbot-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    border-left: 3px solid transparent;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-decoration: none;
+    color: inherit;
+  }
+
+  .chatbot-item:hover {
+    background: #f5f5f5;
+  }
+
+  .chatbot-item.active {
+    background: #f1f0ff;
+    border-left-color: #7125be;
+  }
+
+  .chatbot-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #7125be 0%, #954ddb 100%);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 1rem;
+    flex-shrink: 0;
+    overflow: hidden;
+  }
+
+  .chatbot-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .chatbot-info {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .chatbot-name {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: #263238;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin: 0;
+  }
+
+  .chatbot-status {
+    font-size: 0.75rem;
+    color: #7b8794;
+    display: block;
+    margin-top: 4px;
+  }
+
+  /* Main content area */
+  .conversations-main {
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    gap: 0;
+    border-left: 1px solid #e0e0e0;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  /* Conversations list panel */
+  .conversations-list-panel {
+    border-right: 1px solid #e0e0e0;
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  .conversations-header {
+    padding: 12px 16px;
+    border-bottom: 1px solid #e0e0e0;
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: #263238;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    justify-content: space-between;
+    flex-shrink: 0;
+  }
+
+  .conversations-header-info {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .conv-count {
+    background: #e0d9ff;
+    color: #7125be;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+
+  .conversations-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px 0;
+  }
+
+  .conversation-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    border-left: 3px solid transparent;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-decoration: none;
+    color: inherit;
+    border-bottom: 1px solid #f0f0f0;
+  }
+
+  .conversation-row:hover {
+    background: #f9f9f9;
+  }
+
+  .conversation-row.active {
+    background: #f1f0ff;
+    border-left-color: #7125be;
+  }
+
+  .conv-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 0.85rem;
+    flex-shrink: 0;
+  }
+
+  .conv-body {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .conv-user {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: #263238;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin: 0;
+  }
+
+  .conv-preview {
+    font-size: 0.85rem;
+    color: #8a92a0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-top: 3px;
+    margin: 0;
+  }
+
+  .conv-time {
+    font-size: 0.75rem;
+    color: #999;
+    flex-shrink: 0;
+  }
+
+  /* Chat panel */
+  .chat-panel {
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+    height: 100%;
+    overflow: hidden;
+    min-height: 0;
+  }
+
+  .chat-header {
+    padding: 12px 20px;
+    border-bottom: 1px solid #e0e0e0;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: #fff;
+    z-index: 10;
+    flex-shrink: 0;
+  }
+
+  .chat-header-avatar {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #7125be 0%, #954ddb 100%);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    flex-shrink: 0;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  }
+
+  .chat-header-info h6 {
+    margin: 0;
+    font-weight: 700;
+    color: #263238;
+    font-size: 0.95rem;
+  }
+
+  .chat-header-info p {
+    margin: 2px 0 0 0;
+    font-size: 0.8rem;
+    color: #8a92a0;
+  }
+
+  .messages-area {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+    background: #f4f6f8;
+    display: flex;
+    flex-direction: column;
+    scroll-behavior: smooth;
+    min-height: 0;
+  }
+
+  .message {
+    display: flex;
+    width: 100%;
+    margin-bottom: 4px;
+  }
+
+  /* User (Visitor) -> Left Side */
+  .message.user {
+    justify-content: flex-start;
+  }
+
+  /* Bot (Agent) -> Right Side */
+  .message.bot {
+    justify-content: flex-end;
+  }
+
+  /* Wrapper for bubble + time */
+  .message>div {
+    max-width: 75%;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .message.user>div {
+    align-items: flex-start;
+  }
+
+  .message.bot>div {
+    align-items: flex-end;
+  }
+
+  .message-bubble {
+    width: fit-content;
+    padding: 12px 16px;
+    border-radius: 16px;
+    word-wrap: break-word;
+    font-size: 0.95rem;
+    line-height: 1.5;
+    position: relative;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  }
+
+  /* User Bubble Style */
+  .message.user .message-bubble {
+    background: #ffffff;
+    color: #263238;
+    border-bottom-left-radius: 2px;
+    border: 1px solid #eef0f2;
+  }
+
+  /* Bot Bubble Style */
+  .message.bot .message-bubble {
+    background: #7125be;
+    color: white;
+    border-bottom-right-radius: 2px;
+    box-shadow: 0 2px 8px rgba(113, 37, 190, 0.25);
+  }
+
+  .message-time {
+    font-size: 0.7rem;
+    color: #999;
+    margin-top: 4px;
+  }
+
+  .message.user .message-time {
+    text-align: left;
+    margin-left: 4px;
+  }
+
+  .message.bot .message-time {
+    text-align: right;
+    margin-right: 4px;
+  }
+
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: #8a92a0;
+    text-align: center;
+  }
+
+  .empty-state i {
+    font-size: 3rem;
+    margin-bottom: 12px;
+    opacity: 0.3;
+  }
+
+  .empty-state h5 {
+    color: #263238;
+    margin: 0 0 6px 0;
+    font-weight: 700;
+  }
+
+  .empty-state p {
+    margin: 0;
+    font-size: 0.9rem;
+  }
+
+  /* Scrollbar styling */
+  .chatbots-list::-webkit-scrollbar,
+  .conversations-list::-webkit-scrollbar,
+  .messages-area::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .chatbots-list::-webkit-scrollbar-track,
+  .conversations-list::-webkit-scrollbar-track,
+  .messages-area::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .chatbots-list::-webkit-scrollbar-thumb,
+  .conversations-list::-webkit-scrollbar-thumb,
+  .messages-area::-webkit-scrollbar-thumb {
+    background: #d0d0d0;
+    border-radius: 3px;
+  }
+
+  .chatbots-list::-webkit-scrollbar-thumb:hover,
+  .conversations-list::-webkit-scrollbar-thumb:hover,
+  .messages-area::-webkit-scrollbar-thumb:hover {
+    background: #b0b0b0;
+  }
+
+  /* Responsive */
+  @media (max-width: 1200px) {
+    .conversations-container {
+      grid-template-columns: 240px 1fr;
+    }
+
+    .conversations-main {
+      grid-template-columns: 260px 1fr;
+    }
+  }
+
+  @media (max-width: 992px) {
+    .conversations-container {
+      grid-template-columns: 1fr;
+      height: auto;
+    }
+
+    .chatbots-sidebar {
+      max-height: 120px;
+      border-right: none;
+      border-bottom: 1px solid #e0e0e0;
+    }
+
+    .conversations-main {
+      grid-template-columns: 1fr;
+      border-left: none;
+    }
+
+    .conversations-list-panel {
+      max-height: 150px;
+      border-right: none;
+      border-bottom: 1px solid #e0e0e0;
+    }
+
+    .message>div {
+      max-width: 85%;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="py-1 px-2 px-md-3">
+  <!-- Page Header -->
+  <div class="card border-0 bg-gradient-primary shadow-dark mb-3 p-0">
+    <div class="card-body p-3 d-flex justify-content-between align-items-center">
+      <div>
+        <h5 class="text-white mb-1">
+          <i class="material-symbols-rounded me-2">forum</i>Conversation History
+        </h5>
+        <p class="text-white-50 mb-0 small">Review chatbot conversations and visitor messages</p>
+      </div>
+      <a href="{% url 'my_chatbots' %}" class="btn btn-sm btn-white">
+        <i class="material-symbols-rounded me-1">smart_toy</i>My Chatbots
+      </a>
+    </div>
+  </div>
+
+  <!-- Main Conversations Layout -->
+  <div class="conversations-container shadow-sm rounded overflow-hidden border">
+    <!-- LEFT: Chatbots List -->
+    <div class="chatbots-sidebar">
+      <div class="chatbots-header">
+        <i class="material-symbols-rounded" style="font-size: 1.1rem;">smart_toy</i>
+        My Chatbots
+      </div>
+      <div class="chatbots-list">
+        {% if chatbots %}
+        {% for bot in chatbots %}
+        <a href="{% url 'conversations_by_chatbot' bot.chatbot_id %}"
+          class="chatbot-item {% if bot.chatbot_id == selected_bot.chatbot_id %}active{% endif %}">
+          <div class="chatbot-avatar">
+            {% if bot.logo %}
+            <img src="{{ bot.logo.url }}" alt="{{ bot.name }}" />
+            {% else %}
+            {{ bot.name|slice:":1"|upper }}
+            {% endif %}
+          </div>
+          <div class="chatbot-info">
+            <p class="chatbot-name">{{ bot.name }}</p>
+            <span class="chatbot-status">
+              {% if bot.status == 'trained' %}
+              <span class="badge bg-success bg-opacity-10 text-white small">Trained</span>
+              {% elif bot.status == 'training' %}
+              <span class="badge bg-warning bg-opacity-10 text-white small">Training</span>
+              {% elif bot.status == 'inactive' %}
+              <span class="badge bg-secondary bg-opacity-10 text-white small">Inactive</span>
+              {% else %}
+              <span class="badge bg-danger bg-opacity-10 text-white small">Failed</span>
+              {% endif %}
+            </span>
+          </div>
+        </a>
+        {% endfor %}
+        {% else %}
+        <div class="p-3 text-center text-muted small">No chatbots yet</div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- RIGHT: Conversations + Chat -->
+    <div class="conversations-main">
+      <!-- MIDDLE: Conversations List -->
+      <div class="conversations-list-panel">
+        <div class="conversations-header">
+          <div class="conversations-header-info">
+            <i class="material-symbols-rounded" style="font-size: 1.1rem;">forum</i>
+            Conversations
+            <span class="conv-count">{{ conversations|length }}</span>
+          </div>
+        </div>
+        <div class="conversations-list">
+          {% if conversations %}
+          {% for conversation in conversations %}
+          <a href="{% url 'conversation_detail' selected_bot.chatbot_id conversation.conversation_id %}"
+            class="conversation-row {% if conversation.conversation_id == selected_conversation.conversation_id %}active{% endif %}">
+            <div class="conv-avatar">V{{ forloop.counter }}</div>
+            <div class="conv-body">
+              <p class="conv-user">Visitor #{{ forloop.counter }}</p>
+              <p class="conv-preview">{{ conversation.last_message|default:"No messages yet"|truncatewords:10 }}</p>
+            </div>
+            <div class="conv-time">{{ conversation.last_updated|timesince|truncatewords:2 }}</div>
+          </a>
+          {% endfor %}
+          {% else %}
+          <div class="p-4 text-center text-muted small">
+            {% if selected_bot %}
+            No conversations for this chatbot
+            {% else %}
+            Select a chatbot to view conversations
+            {% endif %}
+          </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- RIGHT: Chat Messages -->
+      <div class="chat-panel">
+        {% if selected_conversation %}
+        <div class="chat-header">
+          <div class="chat-header-avatar"><i class="material-symbols-rounded" style="font-size:1.2rem;">person</i></div>
+          <div class="chat-header-info">
+            <h6>{{ selected_bot.name }} — Visitor Chat</h6>
+            <p>
+              Started {{ selected_conversation.started_at|date:'M d, Y' }} &bull;
+              {{ selected_conversation.started_at|date:'g:i A' }}
+            </p>
+          </div>
+        </div>
+        <div class="messages-area" id="messagesArea">
+          {% if messages %}
+          {% for message in messages %}
+          <div class="message {% if message.is_bot %}bot{% else %}user{% endif %}">
+            <div>
+              <div class="message-bubble">{{ message.content|linebreaks }}</div>
+              <div class="message-time">{{ message.timestamp|date:'g:i A' }}</div>
+            </div>
+          </div>
+          {% endfor %}
+          {% else %}
+          <div class="empty-state">
+            <i class="material-symbols-rounded">mail</i>
+            <h5>No Messages</h5>
+            <p>This conversation has no messages yet</p>
+          </div>
+          {% endif %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+          <i class="material-symbols-rounded">forum</i>
+          <h5>Select a Conversation</h5>
+          <p>Choose a chatbot and conversation to view messages</p>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    var messagesArea = document.getElementById("messagesArea");
+    if (messagesArea) {
+      messagesArea.scrollTop = messagesArea.scrollHeight;
+    }
+  });
+</script>
+{% endblock %}

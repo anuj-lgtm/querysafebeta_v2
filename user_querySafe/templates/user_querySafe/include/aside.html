@@ -1,0 +1,166 @@
+{% load static %}
+{% url 'dashboard' as dashboard_url %}
+{% url 'my_chatbots' as chatbots_url %}
+{% url 'create_chatbot' as create_chatbot_url %}
+<aside class="sidenav navbar navbar-vertical navbar-expand-xs border-radius-lg fixed-start ms-2 bg-white my-2" id="sidenav-main">
+  <div class="sidenav-header">
+    <!-- Close button -->
+    <button class="btn btn-link p-3 cursor-pointer text-dark position-absolute end-0 top-0 d-xl-none" id="iconSidenav"><i class="material-symbols-rounded">close</i></button>
+    <a class="navbar-brand px-4 py-3 m-0" href="#">
+      <img src="{% static 'user_querySafe/img/logo-ct-dark.png' %}" class="navbar-brand-img" width="26" height="26" alt="main_logo" />
+      <span class="ms-1 text-sm text-dark"><b>{{ PROJECT_NAME }}</b></span>
+    </a>
+  </div>
+  <hr class="horizontal dark mt-0 mb-2" />
+  <div class="collapse navbar-collapse w-auto" id="sidenav-collapse-main">
+    <ul class="navbar-nav">
+      <!-- Dashboard -->
+      <li class="nav-item">
+        {% url 'dashboard' as dashboard_url %}
+        <a class="nav-link {% if request.path == dashboard_url %}
+            active bg-gradient-primary text-white
+          {% else %}
+            text-dark
+          {% endif %}"
+          href="{{ dashboard_url }}">
+          <i class="material-symbols-rounded opacity-5">dashboard</i>
+          <span class="nav-link-text ms-1">Dashboard</span>
+        </a>
+      </li>
+
+      <!-- My Chatbots submenu -->
+      <li class="nav-item">
+        <a class="nav-link d-flex justify-content-between align-items-center {% if request.path == chatbots_url or request.path == create_chatbot_url %}
+            active bg-gradient-primary text-white
+          {% else %}
+            text-dark
+          {% endif %}"
+          href="#chatbotSubmenu"
+          data-bs-toggle="collapse"
+          role="button"
+          aria-expanded="{% if request.path == chatbots_url or request.path == create_chatbot_url %}
+            true
+          {% else %}
+            false
+          {% endif %}"
+          aria-controls="chatbotSubmenu">
+          <i class="material-symbols-rounded opacity-5">smart_toy</i>
+          <span class="nav-link-text ms-1">My Chatbots</span>
+        </a>
+        <div class="collapse {% if request.path == chatbots_url or request.path == create_chatbot_url %}show{% endif %}" id="chatbotSubmenu">
+          <ul class="nav nav-sm flex-column">
+            <li class="nav-item">
+              <a href="{{ chatbots_url }}"
+                class="nav-link {% if request.path == chatbots_url %}
+                  active text-dark
+                {% else %}
+                  text-dark
+                {% endif %}">
+                <i class="material-symbols-rounded opacity-5">list</i>
+                <span class="nav-link-text ms-1">List Chatbots</span>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a href="{{ create_chatbot_url }}"
+                class="nav-link {% if request.path == create_chatbot_url %}
+                  active text-dark
+                {% else %}
+                  text-dark
+                {% endif %}">
+                <i class="material-symbols-rounded opacity-5">add_circle_outline</i>
+                <span class="nav-link-text ms-1">Create New</span>
+              </a>
+            </li>
+          </ul>
+        </div>
+      </li>
+      <!-- Conversations -->
+      <li class="nav-item">
+        {% url 'conversations' as conversations_url %}
+        <a class="nav-link {% if request.path|slice:':14' == '/conversations' %}
+            active bg-gradient-primary text-white
+          {% else %}
+            text-dark
+          {% endif %}"
+          href="{% url 'conversations' %}">
+          <i class="material-symbols-rounded opacity-5">message</i>
+          <span class="nav-link-text ms-1">Conversation History</span>
+        </a>
+      </li>
+      <!-- Analytics -->
+      <li class="nav-item">
+        {% url 'analytics' as analytics_url %}
+        <a class="nav-link {% if '/analytics' in request.path %}
+            active bg-gradient-primary text-white
+          {% else %}
+            text-dark
+          {% endif %}"
+          href="{{ analytics_url }}">
+          <i class="material-symbols-rounded opacity-5">bar_chart</i>
+          <span class="nav-link-text ms-1">Analytics</span>
+        </a>
+      </li>
+
+      <!-- Additional items (e.g. Account) -->
+      <li class="nav-item mt-3">
+        <h6 class="ps-4 ms-2 text-uppercase text-xs text-dark font-weight-bolder opacity-5">Account</h6>
+      </li>
+      <li class="nav-item">
+        {% url 'profile' as profile_url %}
+        <a class="nav-link {% if request.path == profile_url %}
+            active bg-gradient-primary text-white
+          {% else %}
+            text-dark
+          {% endif %}"
+          href="{{ profile_url }}">
+          <i class="material-symbols-rounded opacity-5">person</i>
+          <span class="nav-link-text ms-1">Profile</span>
+        </a>
+      </li>
+      <li class="nav-item">
+        {% url 'usage' as usage_url %}
+        <a class="nav-link {% if request.path == usage_url %}
+            active bg-gradient-primary text-white
+          {% else %}
+            text-dark
+          {% endif %}"
+          href="{{ usage_url }}">
+          <i class="material-symbols-rounded opacity-5">receipt_long</i>
+          <span class="nav-link-text ms-1">Account Usage</span>
+        </a>
+      </li>
+      
+      <li class="nav-item">
+        {% url 'order_history' as orders_url %}
+        <a class="nav-link {% if request.path == orders_url %} active bg-gradient-primary text-white {% else %} text-dark {% endif %}" href="{{ orders_url }}">
+          <i class="material-symbols-rounded opacity-5">history</i>
+          <span class="nav-link-text ms-1">Orders History</span>
+        </a>
+      </li>
+      <li class="nav-item">
+        {% url 'subscriptions' as subscriptions_url %}
+        <a class="nav-link {% if request.path == subscriptions_url %} active bg-gradient-primary text-white {% else %} text-dark {% endif %}" href="{{ subscriptions_url }}">
+          <i class="material-symbols-rounded opacity-5">paid</i>
+          <span class="nav-link-text ms-1">View Plans</span>
+        </a>
+      </li>
+      <li class="nav-item">
+        {% url 'help_support' as help_support_url %}
+        <a class="nav-link {% if request.path == help_support_url %}
+        active bg-gradient-primary text-white
+          {% else %}
+        text-dark
+          {% endif %}"
+          href="{{ help_support_url }}">
+          <i class="material-symbols-rounded opacity-5">help</i>
+          <span class="nav-link-text ms-1">Help & Support</span>
+        </a>
+      </li>
+    </ul>
+  </div>
+  <div class="sidenav-footer position-absolute w-100 bottom-0">
+    <div class="mx-3">
+      <a class="btn bg-gradient-primary w-100" href="{% url 'logout' %}" type="button"><i class="material-symbols-rounded opacity-5">logout</i> Logout</a>
+    </div>
+  </div>
+</aside>

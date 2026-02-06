@@ -1,0 +1,520 @@
+{% extends 'user_querySafe/include/base.html' %}
+{% load static %}
+
+{% block title %}Edit Chatbot | {{ block.super }}{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{% static 'user_querySafe/css/create_chatbot.css' %}">
+<div class="container-fluid py-2">
+    <div class="row">
+        <div class="col-12">
+
+            <!-- Main Edit Chatbot Card -->
+            <div class="card my-4">
+                <div class="card-header p-0 position-relative mt-n4 mx-3 z-index-2">
+                    <div class="d-flex justify-content-between align-items-center bg-gradient-primary shadow-dark border-radius-lg pt-4 pb-3 px-3">
+                        <h6 class="text-white text-capitalize mb-0">Edit Chatbot: {{ chatbot.name }}</h6>
+                        <a href="{% url 'my_chatbots' %}" class="btn btn-white btn-sm text-dark">
+                            <i class="material-symbols-rounded align-middle">arrow_back</i>
+                            Back to Chatbots
+                        </a>
+                    </div>
+                </div>
+
+                <div class="card-body">
+
+                    <!-- Status + Last Trained Info -->
+                    <div class="d-flex align-items-center gap-3 mb-3">
+                        <span class="badge {% if chatbot.status == 'trained' %}bg-gradient-success{% elif chatbot.status == 'training' %}bg-gradient-warning{% else %}bg-gradient-secondary{% endif %} px-3 py-2">
+                            {{ chatbot.status|title }}
+                        </span>
+                        {% if chatbot.last_trained_at %}
+                        <span class="text-muted text-sm">Last trained: {{ chatbot.last_trained_at|timesince }} ago</span>
+                        {% endif %}
+                        <span class="text-muted text-sm">Created: {{ chatbot.created_at|date:"M d, Y" }}</span>
+                    </div>
+
+                    <form method="post" enctype="multipart/form-data" id="edit-form">
+                        {% csrf_token %}
+
+                        <!-- Basic Details Section -->
+                        <div class="card shadow-sm mb-4">
+                            <div class="card-header bg-light">
+                                <h5 class="mb-0">
+                                    <i class="material-symbols-rounded align-middle me-2 border-secondary rounded p-1">smart_toy</i>
+                                    Basic Details
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <!-- Left side - Logo Upload -->
+                                    <div class="col-md-4 text-center">
+                                        <div class="mb-3">
+                                            <div class="logo-preview mb-3">
+                                                <img id="logo-preview"
+                                                    src="{% if chatbot.logo %}{{ chatbot.logo.url }}{% else %}{% get_media_prefix %}chatbot_logos/default.png{% endif %}"
+                                                    class="img-fluid rounded-circle border p-2"
+                                                    style="width: 150px; height: 150px; object-fit: cover;"
+                                                    alt="Chatbot Logo Preview" />
+                                            </div>
+                                            <label class="btn btn-outline-primary">
+                                                <i class="material-symbols-rounded align-middle">file_upload</i>
+                                                Change Logo
+                                                <input type="file" name="logo" id="logo-input" class="d-none"
+                                                    accept="image/*" onchange="previewLogo(this)" />
+                                            </label>
+                                            <div id="logo-error" class="text-danger small mt-2" style="display: none;"></div>
+                                            <div class="text-muted small mt-2">Recommended: 512x512px, Max 2MB</div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Right side - Text Inputs -->
+                                    <div class="col-md-8">
+                                        <div class="mb-4">
+                                            <label for="id_name" class="form-label d-flex align-items-center">
+                                                <i class="material-symbols-rounded me-2 border rounded p-1">label</i>
+                                                Chatbot Name
+                                            </label>
+                                            {{ form.name }}
+                                            <small class="text-muted mt-1 d-block">Give it a clear name, e.g. "Acme Support Bot"</small>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="id_description" class="form-label d-flex align-items-center">
+                                                <i class="material-symbols-rounded me-2 border rounded p-1">description</i>
+                                                Description
+                                            </label>
+                                            {{ form.description }}
+                                            <small class="text-muted mt-1 d-block">Helps you identify it later; visitors won't see this.</small>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="id_bot_instructions" class="form-label d-flex align-items-center">
+                                                <i class="material-symbols-rounded me-2 border rounded p-1">tune</i>
+                                                Bot Instructions <span class="text-muted ms-1" style="font-weight:400;font-size:0.85em;">(Optional)</span>
+                                            </label>
+                                            {{ form.bot_instructions }}
+                                            <small class="text-muted mt-1 d-block">Tell your bot how to behave, e.g. "Be friendly and professional. Only discuss our products."</small>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="id_sample_questions" class="form-label d-flex align-items-center">
+                                                <i class="material-symbols-rounded me-2 border rounded p-1">chat_bubble</i>
+                                                Starter Questions <span class="text-muted ms-1" style="font-weight:400;font-size:0.85em;">(Optional)</span>
+                                            </label>
+                                            {{ form.sample_questions }}
+                                            <small class="text-muted mt-1 d-block">Add 2-3 questions visitors might ask. One per line.</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Website URLs Section -->
+                        <div class="card shadow-sm mb-4">
+                            <div class="card-header bg-light">
+                                <h5 class="mb-0">
+                                    <i class="material-symbols-rounded align-middle me-2 border-secondary rounded p-1">language</i>
+                                    Website URLs
+                                    <span class="text-muted ms-1" style="font-weight:400;font-size:0.85em;">(Optional)</span>
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                {% if existing_urls %}
+                                <div class="mb-3">
+                                    <h6 class="mb-2"><i class="material-symbols-rounded align-middle me-1">link</i> Existing URLs</h6>
+                                    <div id="existing-urls-list">
+                                        {% for url_obj in existing_urls %}
+                                        <div class="d-flex align-items-center justify-content-between border rounded p-2 mb-2" id="url-row-{{ url_obj.id }}">
+                                            <div class="d-flex align-items-center gap-2 flex-grow-1" style="min-width:0;">
+                                                {% if url_obj.is_sitemap %}
+                                                <span class="badge bg-info text-white" style="font-size:0.7em;">Sitemap</span>
+                                                {% else %}
+                                                <span class="badge bg-light text-dark border" style="font-size:0.7em;">Page</span>
+                                                {% endif %}
+                                                <span class="text-sm text-truncate">{{ url_obj.url }}</span>
+                                                {% if url_obj.status == 'crawled' %}
+                                                <i class="material-symbols-rounded text-success" style="font-size:16px;">check_circle</i>
+                                                {% elif url_obj.status == 'error' %}
+                                                <i class="material-symbols-rounded text-danger" style="font-size:16px;" title="{{ url_obj.error_message }}">error</i>
+                                                {% else %}
+                                                <i class="material-symbols-rounded text-warning" style="font-size:16px;">schedule</i>
+                                                {% endif %}
+                                            </div>
+                                            <button type="button" class="btn btn-outline-danger btn-sm ms-2" onclick="deleteUrl({{ url_obj.id }})">
+                                                <i class="material-symbols-rounded" style="font-size:16px;">close</i>
+                                            </button>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                                {% endif %}
+                                <div class="mb-3">
+                                    <label for="id_website_urls" class="form-label d-flex align-items-center">
+                                        <i class="material-symbols-rounded me-2 border rounded p-1">link</i>
+                                        Add Page URLs <span class="text-muted ms-1" style="font-weight:400;font-size:0.85em;">(one per line)</span>
+                                    </label>
+                                    <textarea name="website_urls" id="id_website_urls" class="form-control border px-3"
+                                              rows="3" placeholder="https://example.com/about&#10;https://example.com/services&#10;https://example.com/faq"></textarea>
+                                    <small class="text-muted mt-1 d-block">Enter webpage URLs to extract content from. One URL per line.</small>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="id_sitemap_url" class="form-label d-flex align-items-center">
+                                        <i class="material-symbols-rounded me-2 border rounded p-1">account_tree</i>
+                                        Sitemap URL <span class="text-muted ms-1" style="font-weight:400;font-size:0.85em;">(auto-discover pages)</span>
+                                    </label>
+                                    <div class="input-group">
+                                        <input type="url" name="sitemap_url" id="id_sitemap_url" class="form-control border px-3"
+                                               placeholder="https://example.com/sitemap.xml" />
+                                        <button type="button" class="btn btn-outline-primary" id="preview-sitemap-btn">
+                                            <i class="material-symbols-rounded align-middle">search</i> Preview
+                                        </button>
+                                    </div>
+                                    <small class="text-muted mt-1 d-block">Paste a sitemap.xml URL to auto-discover all pages on the website.</small>
+                                </div>
+                                <div id="sitemap-preview" class="border rounded-3 p-3" style="display: none;">
+                                    <h6 class="mb-2"><i class="material-symbols-rounded align-middle me-2">list</i>Discovered Pages</h6>
+                                    <div id="sitemap-urls-list"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {% include 'user_querySafe/include/_trust_strip.html' %}
+
+                        <!-- Existing Documents Section -->
+                        <div class="card shadow-sm mb-4">
+                            <div class="card-header bg-light">
+                                <h5 class="mb-0">
+                                    <i class="material-symbols-rounded align-middle me-2 border-secondary rounded p-1">folder</i>
+                                    Existing Documents
+                                    <span class="badge bg-primary ms-2" id="doc-count-badge">{{ existing_docs.count }}</span>
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                {% if existing_docs %}
+                                <div id="existing-docs-list">
+                                    {% for doc in existing_docs %}
+                                    <div class="d-flex align-items-center justify-content-between border rounded p-2 mb-2" id="doc-row-{{ doc.id }}">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <i class="material-symbols-rounded text-primary">description</i>
+                                            <span class="text-sm">{{ doc.document.name|truncatechars:60 }}</span>
+                                            <span class="text-muted text-xs">{{ doc.uploaded_at|date:"M d, Y" }}</span>
+                                        </div>
+                                        <button type="button" class="btn btn-outline-danger btn-sm" onclick="deleteDocument({{ doc.id }})">
+                                            <i class="material-symbols-rounded" style="font-size:16px;">delete</i>
+                                        </button>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                                {% else %}
+                                <p class="text-muted mb-0">No documents uploaded yet.</p>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Upload New Documents Section -->
+                        <div class="card shadow-sm mb-4">
+                            <div class="card-header bg-light">
+                                <h5 class="mb-0">
+                                    <i class="material-symbols-rounded align-middle me-2 border-secondary rounded p-1">upload_file</i>
+                                    Upload New Documents
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="upload-area rounded-3 p-4 text-center mb-3">
+                                    <i class="material-symbols-rounded text-primary border rounded p-2" style="font-size: 48px;">upload_file</i>
+                                    <h6 class="mt-3">Drag & Drop Files Here</h6>
+                                    <p class="text-muted small mb-3">or</p>
+                                    <label class="btn btn-primary">
+                                        <i class="material-symbols-rounded align-middle">attach_file</i>
+                                        Browse Files<input type="file" id="file-input" name="pdf_files" multiple
+                                            accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.gif,.bmp" class="d-none"
+                                            onchange="handleFiles(this.files)" />
+                                    </label>
+                                    <div class="text-muted small mt-2">Maximum {{ active_plan.no_of_files|default:"5" }} total sources, {{ active_plan.file_size|default:"2" }}MB each.</div>
+                                </div>
+                                <div id="files-list" class="border rounded-3 p-3" style="display: none;">
+                                    <h6 class="mb-3">
+                                        <i class="material-symbols-rounded align-middle me-2 border rounded p-1">folder</i>
+                                        New Files to Upload
+                                    </h6>
+                                    <div id="files-container"></div>
+                                </div>
+                                <div id="file-error" class="alert alert-danger py-2 mt-2 text-white" style="display: none;">
+                                    <i class="material-symbols-rounded align-middle me-2">error</i>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div class="d-flex gap-3 mb-4">
+                            <button type="submit" class="btn btn-primary btn-lg flex-grow-1">
+                                <i class="material-symbols-rounded align-middle me-2">save</i>
+                                Save Changes
+                            </button>
+                            <button type="button" class="btn btn-outline-warning btn-lg" onclick="confirmRetrain()">
+                                <i class="material-symbols-rounded align-middle me-2">refresh</i>
+                                Retrain Bot
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+    // ── Logo preview ──
+    function previewLogo(input) {
+        const logoError = document.getElementById('logo-error');
+        const logoPreview = document.getElementById('logo-preview');
+        const maxSize = 2 * 1024 * 1024;
+        if (input.files && input.files[0]) {
+            const file = input.files[0];
+            if (file.size > maxSize) {
+                logoError.textContent = 'Logo file size must be less than 2MB';
+                logoError.style.display = 'block';
+                input.value = '';
+                return;
+            }
+            if (!file.type.match('image.*')) {
+                logoError.textContent = 'Please select an image file';
+                logoError.style.display = 'block';
+                input.value = '';
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                logoPreview.src = e.target.result;
+                logoError.style.display = 'none';
+            };
+            reader.readAsDataURL(file);
+        }
+    }
+
+    // ── File upload handling ──
+    const allowedDocs = {{ active_plan.no_of_files|default:"0" }};
+    const allowedDocSizeMB = {{ active_plan.file_size|default:"0" }};
+    let accumulatedFiles = new DataTransfer();
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    function updateFilesUI(files) {
+        const container = document.getElementById('files-container');
+        const filesList = document.getElementById('files-list');
+        container.innerHTML = '';
+        Array.from(files).forEach((file) => {
+            const safeName = escapeHtml(file.name);
+            const fileItem = document.createElement('div');
+            fileItem.className = 'd-flex align-items-center justify-content-between border rounded p-2 mb-2';
+            fileItem.innerHTML = `
+                <div class="d-flex align-items-center gap-2">
+                    <i class="material-symbols-rounded text-primary">description</i>
+                    <span class="text-sm">${safeName}</span>
+                    <span class="text-muted text-xs">${(file.size / 1024 / 1024).toFixed(2)} MB</span>
+                </div>
+            `;
+            const removeBtn = document.createElement('button');
+            removeBtn.type = 'button';
+            removeBtn.className = 'btn btn-outline-danger btn-sm';
+            removeBtn.innerHTML = '<i class="material-symbols-rounded" style="font-size:16px;">close</i>';
+            removeBtn.addEventListener('click', () => removeFile(file.name));
+            fileItem.appendChild(removeBtn);
+            container.appendChild(fileItem);
+        });
+        filesList.style.display = files.length ? 'block' : 'none';
+    }
+
+    function handleFiles(newFiles) {
+        const errorContainer = document.getElementById('file-error');
+        errorContainer.style.display = 'none';
+        let currentCount = accumulatedFiles.files.length;
+        const allowedTypes = ['.pdf', '.doc', '.docx', '.txt', '.jpg', '.jpeg', '.png', '.gif', '.bmp'];
+
+        for (const file of newFiles) {
+            const extension = '.' + file.name.split('.').pop().toLowerCase();
+            if (!allowedTypes.includes(extension)) {
+                errorContainer.textContent = `File type "${extension}" is not supported.`;
+                errorContainer.style.display = 'block';
+                continue;
+            }
+            if (file.size > allowedDocSizeMB * 1024 * 1024) {
+                errorContainer.textContent = `File '${file.name}' exceeds the limit of ${allowedDocSizeMB}MB.`;
+                errorContainer.style.display = 'block';
+                continue;
+            }
+            let exists = false;
+            for (const ef of accumulatedFiles.files) {
+                if (ef.name === file.name) { exists = true; break; }
+            }
+            if (!exists) {
+                accumulatedFiles.items.add(file);
+                currentCount++;
+            }
+        }
+        document.getElementById('file-input').files = accumulatedFiles.files;
+        updateFilesUI(accumulatedFiles.files);
+    }
+
+    function removeFile(fileName) {
+        const dt = new DataTransfer();
+        for (const file of accumulatedFiles.files) {
+            if (file.name !== fileName) dt.items.add(file);
+        }
+        accumulatedFiles = dt;
+        document.getElementById('file-input').files = accumulatedFiles.files;
+        updateFilesUI(accumulatedFiles.files);
+    }
+
+    // Drag & drop
+    const uploadArea = document.querySelector('.upload-area');
+    if (uploadArea) {
+        uploadArea.addEventListener('dragover', (e) => { e.preventDefault(); uploadArea.style.borderColor = '#0d6efd'; uploadArea.style.backgroundColor = '#f8f9fa'; });
+        uploadArea.addEventListener('dragleave', (e) => { e.preventDefault(); uploadArea.style.borderColor = '#dee2e6'; uploadArea.style.backgroundColor = ''; });
+        uploadArea.addEventListener('drop', (e) => { e.preventDefault(); uploadArea.style.borderColor = '#dee2e6'; uploadArea.style.backgroundColor = ''; handleFiles(e.dataTransfer.files); });
+    }
+
+    // ── AJAX delete document ──
+    function deleteDocument(docId) {
+        Swal.fire({
+            title: 'Remove Document?',
+            text: 'This document will be permanently deleted.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            confirmButtonText: 'Yes, remove it',
+            cancelButtonText: 'Cancel',
+        }).then((result) => {
+            if (result.isConfirmed) {
+                fetch(`/chatbot/delete_document/${docId}/`, {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': '{{ csrf_token }}' },
+                }).then(r => r.json()).then(data => {
+                    if (data.success) {
+                        const row = document.getElementById(`doc-row-${docId}`);
+                        if (row) row.remove();
+                        document.getElementById('doc-count-badge').textContent = data.remaining_docs;
+                        Swal.fire({ icon: 'success', title: 'Removed', text: data.message, timer: 1500, showConfirmButton: false });
+                    } else {
+                        Swal.fire('Error', data.error || 'Could not delete document', 'error');
+                    }
+                }).catch(() => Swal.fire('Error', 'Network error', 'error'));
+            }
+        });
+    }
+
+    // ── AJAX delete URL ──
+    function deleteUrl(urlId) {
+        Swal.fire({
+            title: 'Remove URL?',
+            text: 'This URL source will be removed.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            confirmButtonText: 'Yes, remove it',
+        }).then((result) => {
+            if (result.isConfirmed) {
+                fetch(`/chatbot/delete_url/${urlId}/`, {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': '{{ csrf_token }}' },
+                }).then(r => r.json()).then(data => {
+                    if (data.success) {
+                        const row = document.getElementById(`url-row-${urlId}`);
+                        if (row) row.remove();
+                        Swal.fire({ icon: 'success', title: 'Removed', timer: 1500, showConfirmButton: false });
+                    }
+                }).catch(() => Swal.fire('Error', 'Network error', 'error'));
+            }
+        });
+    }
+
+    // ── Sitemap preview ──
+    document.getElementById('preview-sitemap-btn').addEventListener('click', function() {
+        const sitemapUrl = document.getElementById('id_sitemap_url').value.trim();
+        if (!sitemapUrl) return;
+        this.disabled = true;
+        this.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Loading...';
+
+        fetch("{% url 'preview_sitemap' %}", {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+            body: JSON.stringify({ url: sitemapUrl })
+        })
+        .then(r => r.json())
+        .then(data => {
+            const preview = document.getElementById('sitemap-preview');
+            const list = document.getElementById('sitemap-urls-list');
+            if (data.error) {
+                list.innerHTML = `<div class="text-danger">${data.error}</div>`;
+            } else {
+                list.innerHTML = data.urls.slice(0, 20).map(u =>
+                    `<div class="text-xs text-truncate mb-1"><i class="material-symbols-rounded text-success" style="font-size:14px;">check_circle</i> ${u}</div>`
+                ).join('');
+                if (data.total > 20) {
+                    list.innerHTML += `<div class="text-muted text-xs mt-1">...and ${data.total - 20} more pages</div>`;
+                }
+            }
+            preview.style.display = 'block';
+        })
+        .catch(() => {
+            document.getElementById('sitemap-urls-list').innerHTML = '<div class="text-danger">Failed to fetch sitemap.</div>';
+            document.getElementById('sitemap-preview').style.display = 'block';
+        })
+        .finally(() => {
+            this.disabled = false;
+            this.innerHTML = '<i class="material-symbols-rounded align-middle">search</i> Preview';
+        });
+    });
+
+    // ── Retrain confirmation ──
+    function confirmRetrain() {
+        Swal.fire({
+            title: 'Retrain Chatbot?',
+            html: 'This will rebuild the knowledge base from all current documents and URLs.<br><small class="text-muted">The bot will be unavailable for 1-3 minutes during retraining.</small>',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#7125BE',
+            confirmButtonText: 'Yes, retrain',
+            cancelButtonText: 'Cancel',
+        }).then((result) => {
+            if (result.isConfirmed) {
+                // Submit retrain form
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = "{% url 'retrain_chatbot' chatbot.chatbot_id %}";
+                const csrf = document.createElement('input');
+                csrf.type = 'hidden';
+                csrf.name = 'csrfmiddlewaretoken';
+                csrf.value = '{{ csrf_token }}';
+                form.appendChild(csrf);
+                document.body.appendChild(form);
+                form.submit();
+            }
+        });
+    }
+</script>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .logo-preview {
+        position: relative; width: 150px; height: 150px; margin: 0 auto;
+        border-radius: 50%; overflow: hidden;
+        box-shadow: 0 4px 20px 0 rgba(0,0,0,.14);
+        transition: transform 0.3s ease;
+    }
+    .logo-preview:hover { transform: scale(1.05); }
+    .logo-preview img { width: 100%; height: 100%; object-fit: cover; border: 2px solid #fff; }
+
+    .upload-area {
+        border: 2px dashed #dee2e6; background-color: #f8f9fa;
+        transition: all 0.3s ease; padding: 1.5rem !important;
+    }
+    .upload-area:hover { border-color: #0d6efd; background-color: #f1f5ff; }
+</style>
+{% endblock %}

@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        .ticket-info { margin: 20px 0; padding: 15px; background: #f8f9fa; border-radius: 5px; }
+        .btn-primary { background: #9c27b0; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <h2>New Support Request</h2>
+    <p>A new support ticket has been created.</p>
+    
+    <div class="ticket-info">
+        <p><strong>Ticket ID:</strong> {{ ticket.ticket_id }}</p>
+        <p><strong>User:</strong> {{ user.name }} ({{ user.email }})</p>
+        <p><strong>Subject:</strong> {{ ticket.subject }}</p>
+        <p><strong>Message:</strong><br>{{ ticket.message }}</p>
+        <p><strong>Created:</strong> {{ ticket.created_at|date:"M d, Y H:i" }}</p>
+    </div>
+
+    <p>
+        <a href="{{ admin_url }}" class="btn-primary">View in Admin Panel</a>
+    </p>
+</body>
+</html>

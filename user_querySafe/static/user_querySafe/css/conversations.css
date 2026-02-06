@@ -1,0 +1,282 @@
+/* Layout & Cards */
+.card {
+  box-shadow: var(--card-shadow);
+  transition: all 0.2s ease;
+}
+
+/* Chatbot List Styling */
+.chatbot-item {
+  text-decoration: none;
+  color: var(--secondary);
+}
+
+.chatbot-item .active {
+  background: var(--primary-light);
+  border: 1px solid rgba(75, 26, 134, 0.2);
+}
+
+.chatbot-item:hover:not(.active) div {
+  background: var(--light);
+  transform: translateX(5px);
+}
+
+/* Avatar & Icons */
+.chatbot-avatar,
+.conversation-avatar,
+.chat-avatar {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.chatbot-avatar {
+  border-radius: 10px;
+}
+
+.conversation-avatar,
+.chat-avatar {
+  border-radius: 50%;
+}
+
+/* Status Badges */
+.status-badge {
+  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.status-trained {
+  background: rgba(45, 206, 137, 0.1);
+  color: var(--success);
+}
+
+.status-training {
+  background: rgba(251, 99, 64, 0.1);
+  color: var(--warning);
+}
+
+/* Messages */
+.message {
+  display: flex;
+  margin-bottom: 1rem;
+  max-width: 80%;
+}
+
+.message-left {
+  margin-right: auto;
+}
+
+.message-right {
+  margin-left: auto;
+  flex-direction: row-reverse;
+}
+
+.message-content {
+  padding: 1rem;
+  border-radius: 1rem;
+  position: relative;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.message-left .message-content {
+  background: var(--white);
+  border-bottom-left-radius: 0.25rem;
+}
+
+.message-right .message-content {
+  background: var(--primary);
+  color: var(--white);
+  border-bottom-right-radius: 0.25rem;
+}
+
+/* Scrollbars */
+.overflow-y-auto {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
+}
+
+.overflow-y-auto::-webkit-scrollbar {
+  width: 4px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+  .border-end {
+    border-right: none !important;
+    border-bottom: 1px solid #dee2e6;
+  }
+
+  .chatbot-list,
+  .conversations-list {
+    height: 300px !important;
+  }
+
+  .message {
+    max-width: 90%;
+  }
+}
+
+/* Updated/New Styles */
+.chatbot-avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: var(--primary-gradient);
+  position: relative;
+  overflow: hidden;
+}
+
+.chatbot-avatar i {
+  font-size: 20px;
+  color: white;
+  position: relative;
+  z-index: 1;
+}
+
+.chatbot-avatar::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(45deg, rgba(0, 0, 0, 0.1), transparent);
+}
+
+/* Chat Messages Styling */
+.message {
+  display: flex;
+  margin-bottom: 0.75rem;
+  max-width: 75%;
+  font-size: 0.875rem;
+}
+
+.message-content {
+  padding: 0.75rem 1rem;
+  border-radius: 15px;
+  position: relative;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.message-left .message-content {
+  background: #f1f3f5;
+  color: #1a1a1a;
+  border-bottom-left-radius: 4px;
+}
+
+.message-right .message-content {
+  background: #141727;
+  color: white;
+  border-bottom-right-radius: 4px;
+}
+
+.message-time {
+  font-size: 0.7rem;
+  margin-top: 0.25rem;
+  opacity: 0.7;
+}
+
+/* Scrollable Sections */
+.chatbot-list,
+.conversations-list,
+.chat-messages {
+  height: calc(100vh - 320px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+}
+
+/* Active States */
+.chatbot-item.active div {
+  background: var(--primary-light) !important;
+  border: 1px solid rgba(75, 26, 134, 0.2);
+}
+
+.conversation-item.active div {
+  background: var(--primary-light);
+  border: 1px solid rgba(75, 26, 134, 0.2);
+}
+
+/* Status Badge - Matching my_chatbots.html */
+.status-badge {
+  padding: 0.35rem 0.65rem;
+  font-size: 0.65rem;
+  font-weight: 500;
+  letter-spacing: 0.3px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: 6px;
+}
+
+.status-badge i {
+  font-size: 14px;
+}
+
+.status-trained {
+  background: rgba(45, 206, 137, 0.1);
+  color: #2dce89;
+}
+
+.status-training {
+  background: rgba(251, 99, 64, 0.1);
+  color: #fb6340;
+}
+
+.status-inactive {
+  background: rgba(130, 134, 139, 0.1);
+  color: #82868b;
+}
+
+/* Focus Styles for Scrollable Areas */
+.chatbot-list:focus,
+.conversations-list:focus,
+.chat-messages:focus {
+  outline: none;
+  box-shadow: inset 0 0 0 2px rgba(75, 26, 134, 0.2);
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.chatbot-logo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 12px;
+}
+
+/* Optional: Add a subtle overlay on hover */
+.chatbot-avatar:hover::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 12px;
+}

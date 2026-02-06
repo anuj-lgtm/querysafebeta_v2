@@ -1,0 +1,216 @@
+{% extends 'user_querySafe/include/base.html' %}
+
+{% block title %}Order History {{ block.super }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-2">
+  <div class="row">
+    <div class="col-12">
+      <div class="card my-4">
+        <div class="card-header p-0 position-relative mt-n4 mx-3 z-index-2">
+          <div
+            class="d-flex justify-content-between align-items-center bg-gradient-primary shadow-dark border-radius-lg pt-4 pb-3 px-3">
+            <h6 class="text-white text-capitalize mb-0">Order History</h6>
+            <a href="{% url 'subscriptions' %}" class="btn btn-white btn-sm">
+              <i class="material-symbols-rounded align-middle">paid</i>
+              View Plans
+            </a>
+          </div>
+        </div>
+        <div class="card-body p-3 pb-2">
+          <div class="table-responsive p-0">
+            <style>
+              /* Table styling */
+              .order-table tbody tr:hover {
+                background: rgba(113, 37, 190, 0.04);
+                transition: 0.2s;
+              }
+
+              .order-table td,
+              .order-table th {
+                padding: 12px 14px;
+                vertical-align: middle;
+              }
+
+              .order-table th {
+                font-weight: 600;
+                color: #6c757d;
+              }
+
+              /* Status badges */
+              .badge-status {
+                padding: 6px 12px;
+                border-radius: 12px;
+                font-size: 11px;
+                font-weight: 600;
+              }
+
+              .badge-completed {
+                background: #d4edda;
+                color: #155724;
+              }
+
+              .badge-pending {
+                background: #fff3cd;
+                color: #856404;
+              }
+
+              .badge-failed {
+                background: #f8d7da;
+                color: #721c24;
+              }
+
+              /* Plan type badges */
+              .badge-type {
+                padding: 4px 10px;
+                border-radius: 6px;
+                font-size: 10px;
+                font-weight: 600;
+              }
+
+              .badge-type-qs {
+                background: #cfe2ff;
+                color: #084298;
+              }
+
+              .badge-type-standard {
+                background: #e2e3e5;
+                color: #383d41;
+              }
+
+              /* Error details */
+              .error-tooltip {
+                cursor: help;
+                border-bottom: 1px dotted #dc3545;
+              }
+
+              .error-code {
+                font-family: monospace;
+                font-size: 11px;
+                color: #721c24;
+              }
+            </style>
+
+            {% if orders and orders|length > 0 %}
+            <table class="table align-items-center mb-0 order-table">
+              <thead>
+                <tr style="background: #f8f9fa;">
+                  <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">S.No</th>
+                  <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Order ID</th>
+                  <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Plan</th>
+                  <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Type</th>
+                  <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Amount</th>
+                  <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Status</th>
+                  <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Activation Date</th>
+                  <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Valid Until</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for order in orders %}
+                <tr>
+                  <!-- S.No -->
+                  <td>
+                    <p class="text-xs text-secondary mb-0" style="font-weight: 600;">{{ forloop.counter }}</p>
+                  </td>
+
+                  <!-- Order ID -->
+                  <td>
+                    <p class="text-xs font-weight-bold mb-0">
+                      <a href="#" style="color: #7125BE; text-decoration: none;" title="{{ order.order_id }}">
+                        {{ order.order_id|truncatechars:20 }}
+                      </a>
+                    </p>
+                  </td>
+
+                  <!-- Plan Name -->
+                  <td>
+                    <p class="text-xs font-weight-bold mb-0">{{ order.plan_name }}</p>
+                  </td>
+
+                  <!-- Order Type -->
+                  <td>
+                    {% if order.type == 2 %}
+                    <span class="badge badge-type badge-type-qs">
+                      <i class="material-symbols-rounded" style="font-size: 10px; vertical-align: middle;">star</i>
+                      QuerySafe
+                    </span>
+                    {% else %}
+                    <span class="badge badge-type badge-type-standard">Standard</span>
+                    {% endif %}
+                  </td>
+
+                  <!-- Amount -->
+                  <td>
+                    <p class="text-xs font-weight-bold mb-0">₹{{ order.amount|floatformat:2 }}</p>
+                  </td>
+
+                  <!-- Status -->
+                  <td>
+                    {% if order.status == 'completed' %}
+                    <span class="badge badge-status badge-completed">
+                      <i class="material-symbols-rounded"
+                        style="font-size: 9px; vertical-align: middle;">check_circle</i>
+                      Completed
+                    </span>
+                    {% elif order.status == 'pending' %}
+                    <span class="badge badge-status badge-pending">
+                      <i class="material-symbols-rounded" style="font-size: 9px; vertical-align: middle;">schedule</i>
+                      Pending
+                    </span>
+                    {% elif order.status == 'failed' %}
+                    <span class="badge badge-status badge-failed"
+                      title="Error: {{ order.error_code }} - {{ order.error_desc }}" style="cursor: help;">
+                      <i class="material-symbols-rounded" style="font-size: 9px; vertical-align: middle;">cancel</i>
+                      Failed
+                    </span>
+                    {% if order.error_code %}
+                    <div style="font-size: 10px; color: #721c24; margin-top: 4px;" class="error-code">
+                      {{ order.error_code }}
+                    </div>
+                    {% endif %}
+                    {% else %}
+                    <span class="badge badge-status" style="background: #e2e3e5; color: #383d41;">{{
+                      order.status|capfirst }}</span>
+                    {% endif %}
+                  </td>
+
+                  <!-- Activation Date -->
+                  <td>
+                    <p class="text-xs text-secondary mb-0">{{ order.created_at|date:"M d, Y H:i" }}</p>
+                  </td>
+
+                  <!-- Valid Until (Expiry) -->
+                  <td>
+                    {% if order.expiry %}
+                    <p class="text-xs text-secondary mb-0">{{ order.expiry|date:"M d, Y" }}</p>
+                    {% else %}
+                    <p class="text-xs text-muted mb-0">-</p>
+                    {% endif %}
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+
+            {% else %}
+            <!-- Empty State -->
+            <div class="p-5 text-center">
+              <div style="font-size: 48px; margin-bottom: 16px; color: #d1d3d4;">
+                <i class="material-symbols-rounded" style="font-size: 48px;">receipt_long</i>
+              </div>
+              <h5 class="text-secondary mb-2">No Orders Found</h5>
+              <p class="text-muted mb-4">You haven't made any payments yet. Start exploring our plans!</p>
+              <a href="{% url 'subscriptions' %}" class="btn btn-primary btn-sm">
+                <i class="material-symbols-rounded align-middle" style="font-size: 16px;">shopping_cart</i>
+                Browse Plans
+              </a>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,593 @@
+{% extends 'user_querySafe/include/base.html' %}
+{% block title %}Chatbot {{ block.super }}{% endblock %}
+{% load static %}
+{% block content %}
+<div class="container-fluid py-2">
+  {% if messages %}
+  <div class="row mb-4">
+    <div class="col-12">
+      {% for message in messages %}
+      <div class="alert alert-{% if message.tags == 'error' %}danger{% elif message.tags == 'warning' %}warning{% elif message.tags == 'info' %}info{% else %}success{% endif %} alert-dismissible text-white fade show" role="alert">
+        <span class="text-sm">
+          {{ message }}
+        </span>
+        <button type="button" class="btn-close text-lg py-3 opacity-10" data-bs-dismiss="alert" aria-label="Close">
+          <span aria-hidden="true">×</span>
+        </button>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="row">
+    <div class="col-12">
+      <div class="card my-4">
+        <!-- Card Header -->
+        <div class="card-header p-0 position-relative mt-n4 mx-3 z-index-2">
+          <div class="d-flex justify-content-between align-items-center bg-gradient-primary shadow-dark border-radius-lg pt-4 pb-3 px-3">
+            <h6 class="text-white text-capitalize mb-0">My Chatbots</h6>
+            <a href="{% url 'create_chatbot' %}" class="btn btn-white btn-sm">
+              <i class="material-symbols-rounded align-middle">add_circle</i>
+              Create New Chatbot
+            </a>
+          </div>
+        </div>
+
+        {% if show_widget_guidance %}
+        <!-- Widget guidance for new users -->
+        <div class="mx-3 mt-3">
+          <div class="alert mb-0 py-2 px-3" style="background: #e8f4fd; border: 1px solid #bee5f7; border-radius: 8px;" role="alert">
+            <div class="d-flex align-items-center">
+              <i class="material-symbols-rounded me-2" style="color: #0c7cd5; font-size: 20px;">lightbulb</i>
+              <span class="text-sm" style="color: #0c5494;">
+                <strong>Next step:</strong> Click <em>Widget Code</em> on any trained chatbot to copy the embed snippet for your website.
+              </span>
+            </div>
+          </div>
+        </div>
+        {% endif %}
+
+        <!-- Training toast (shown via JS when any bot is training) -->
+        <div id="training-toast" class="training-toast">
+          <div class="d-flex align-items-center">
+            <span class="toast-icon">&#10024;</span>
+            <span class="toast-text" id="training-toast-text">Your chatbot is learning from your documents...</span>
+          </div>
+        </div>
+
+        <!-- Card Body -->
+        <div class="card-body px-0 pb-2">
+          <div class="table-responsive p-0">
+            <table class="table align-items-center mb-0">
+              <thead>
+                <tr>
+                  <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2 text-center">#</th>
+                  <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Logo</th>
+                  <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Chatbot Name</th>
+                  <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2">Status</th>
+                  <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2">Knowledge Base</th>
+                  <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2">Conversation</th>
+                  <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2">Snippet Code</th>
+                  <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% if chatbots and chatbots|length > 0 %}
+                  {% for bot in chatbots %}
+                  <tr id="chatbot-row-{{ bot.chatbot_id }}" data-created-at="{{ bot.created_at.timestamp }}">
+                    <td class="text-center">
+                      <span class="text-xs font-weight-bold">{{ forloop.counter }}</span>
+                    </td>
+                    <td>
+                      <div class="px-2 py-1">
+                          <div class="avatar avatar-sm rounded-circle border border-primary">
+                            {% if bot.logo %}
+                                <img src="{{ bot.logo.url }}" class="avatar-img rounded-circle" alt="{{ bot.name }}">
+                            {% else %}
+                                <img src="{% get_media_prefix %}chatbot_logos/default.png" class="avatar-img rounded-circle" alt="Default Logo">
+                            {% endif %}
+                          </div>
+                      </div>
+                    </td>
+                    <td>
+                      <div class="d-flex px-2 py-1">
+                        <div class="d-flex flex-column justify-content-center">
+                          <h6 class="mb-0 text-sm">{{ bot.name }}</h6>
+                          <p class="text-xs text-secondary mb-0">{{ bot.description|truncatechars:50 }}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <span id="status-{{ bot.chatbot_id }}" 
+                            class="badge badge-sm bg-gradient-{% if bot.status == 'trained' %}success{% elif bot.status == 'training' %}warning{% else %}secondary{% endif %} {% if bot.status == 'training' %}status-badge-training{% endif %}">
+                        {{ bot.status|title }}
+                      </span>
+                    </td>
+                    <td>
+                      <p class="text-xs font-weight-bold mb-0">
+                        <i class="material-symbols-rounded text-primary align-middle" style="font-size:1em;">description</i>
+                        {{ bot.chatbotdocument_set.count }} doc{{ bot.chatbotdocument_set.count|pluralize }}
+                      </p>
+                    </td>
+                    <td>
+                      <span class="badge badge-sm bg-gradient-info">{{ bot.conversation_count }}</span>
+                    </td>
+                    <td>
+                      <div class="d-flex align-items-center">
+                        <button id="widget-code-{{ bot.chatbot_id }}" 
+                                class="btn btn-outline-primary btn-sm d-flex align-items-center mb-0 {% if bot.status != 'trained' %}disabled opacity-50{% endif %}" 
+                                onclick="{% if bot.status == 'trained' %}copySnippet('{{ bot.chatbot_id }}'){% endif %}" 
+                                title="{% if bot.status == 'trained' %}Click to copy widget code{% else %}Available after training completes{% endif %}"
+                                {% if bot.status != 'trained' %}disabled{% endif %}>
+                            <i class="material-symbols-rounded me-1">content_copy</i>
+                            <span class="text-xs" id="button-text-{{ bot.chatbot_id }}">Widget Code</span>
+                        </button>
+                        <code id="snippet-{{ bot.chatbot_id }}" style="display: none;">{{ bot.snippet_code }}</code>
+                      </div>
+                    </td>
+                    <td class="align-middle text-center">
+                      <div class="btn-group" role="group">
+                        <a href="{% url 'edit_chatbot' bot.chatbot_id %}"
+                           class="btn btn-outline-info btn-xs d-inline-flex align-items-center px-2 py-1 gap-1 mb-0"
+                           style="font-size:0.82rem;"
+                           title="Edit chatbot settings and documents">
+                          <i class="material-symbols-rounded" style="font-size:1.25em;line-height:1;">edit</i>
+                          <span style="font-size:0.78em;">Edit</span>
+                        </a>
+                        <a target="_blank"
+                           href="{% if bot.status == 'trained' %}{% url 'chatbot_view' bot.chatbot_id %}{% endif %}"
+                           class="btn btn-outline-primary btn-xs d-inline-flex align-items-center px-2 py-1 gap-1 mb-0 {% if bot.status != 'trained' %}disabled opacity-50{% endif %}"
+                           style="font-size:0.82rem;"
+                           title="{% if bot.status == 'trained' %}View{% else %}Available after training completes{% endif %}">
+                          <i class="material-symbols-rounded" style="font-size:1.25em;line-height:1;">open_in_new</i>
+                          <span style="font-size:0.78em;">Try Now</span>
+                        </a>
+                        <button type="button"
+                                onclick="confirmStatusChange('{{ bot.chatbot_id }}', '{{ bot.status }}')"
+                                class="btn btn-outline-{% if bot.status == 'trained' %}danger{% else %}success{% endif %} btn-xs d-inline-flex align-items-center px-2 py-1 gap-1 mb-0"
+                                style="font-size:0.82rem;"
+                                title="{% if bot.status == 'trained' %}Disable{% else %}Enable{% endif %}">
+                          <i class="material-symbols-rounded" style="font-size:1.25em;line-height:1;">
+                            {% if bot.status == 'trained' %}block{% else %}play_circle{% endif %}
+                          </i>
+                          <span style="font-size:0.78em;">{% if bot.status == 'trained' %}Disable{% else %}Enable{% endif %}</span>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                  {% endfor %}
+                {% else %}
+                  <tr>
+                    <td colspan="8" class="text-center py-5">
+                      <div class="d-flex flex-column align-items-center justify-content-center" style="min-height: 200px;">
+                        <i class="material-symbols-rounded text-secondary mb-3" style="font-size: 48px;">smart_toy</i>
+                        <h5 class="mt-2 mb-1 text-secondary">No Chatbot Found</h5>
+                        <p class="mb-3 text-muted">
+                          You haven't created any chatbots yet.<br>
+                          Click the button above to create your first chatbot!
+                        </p>
+                        <a href="{% url 'create_chatbot' %}" class="btn btn-primary btn-sm mt-2">
+                          <i class="material-symbols-rounded align-middle">add_circle</i>
+                          Create New Chatbot
+                        </a>
+                      </div>
+                    </td>
+                  </tr>
+                {% endif %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .avatar {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .avatar-img {
+    width: 100%;
+    height: 100%;
+    padding: 5px;
+    object-fit: cover;
+  }
+  .btn-group .btn-link {
+    text-decoration: none;
+  }
+  .badge {
+    font-size: 0.65rem;
+    font-weight: 600;
+  }
+  .cursor-pointer {
+    cursor: pointer;
+  }
+  .btn.btn-sm i {
+    font-size: 0.8rem;
+  }
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+  .status-badge-training {
+    position: relative;
+    padding-left: 20px;
+    display: inline-flex;
+    align-items: center;
+  }
+  .status-badge-training::before {
+    content: "";
+    position: absolute;
+    left: 6px;
+    width: 8px;
+    height: 8px;
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  .disabled {
+    pointer-events: none;
+    cursor: not-allowed !important;
+  }
+  .opacity-50 {
+    opacity: 0.5;
+  }
+  .btn-xs {
+    padding: 0.18rem 0.5rem;
+    font-size: 0.82rem;
+    border-radius: 0.35rem;
+    height: 2rem;
+    min-width: 2.1rem;
+  }
+  .btn-group .btn {
+    margin-right: 0.18rem;
+  }
+  .btn-group .btn:last-child {
+    margin-right: 0;
+  }
+  .btn .material-symbols-rounded {
+    vertical-align: middle;
+    margin-right: 0.18em;
+  }
+  .swal2-popup pre {
+    background: #f8f9fa !important;
+    border-radius: 8px;
+    padding: 0.5rem 0.75rem;
+    margin-bottom: 0;
+    font-family: 'Fira Mono', 'Consolas', 'Menlo', monospace;
+  }
+  .swal2-popup code {
+    background: none !important;
+    color: #4a154b !important;
+    font-size: 0.95em;
+  }
+
+  /* SweetAlert2 Custom Styles */
+  .swal-compact {
+    padding: 1px;
+    border-radius: 6px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    max-width: 520px;
+    font-size: 0.9rem; /* Reduced font size */
+  }
+
+  .swal-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+
+  .swal-icon {
+    background: #7125BE;
+    color: #fff;
+    border-radius: 50%;
+    padding: 6px;
+    font-size: 1.2rem;
+    width: 28px;
+    height: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .swal-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #333;
+  }
+
+  .swal-instructions {
+    font-size: 0.88rem;
+    color: #555;
+    margin-bottom: 0.5rem;
+    /* line-height: 1.4; */
+    text-align: left;
+  }
+
+  .swal-code-container {
+    background: #f8f9fa;
+    border-radius: 6px;
+    padding: 0.6rem;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+    margin-bottom: 0.6rem;
+    border: 1px dashed #d8d8d8;
+  }
+
+  .swal-code {
+    margin: 0;
+    font-family: 'Fira Mono', 'Consolas', 'Menlo', monospace;
+    font-size: 0.8rem;
+    color: #4a154b;
+    word-break: break-word;
+    overflow-y: auto;
+    text-align: left; /* Left-align code */
+    width: 100%; /* Full width */
+    display: block;
+  }
+
+  .btn-outline-primary {
+    border: 1px solid #7125BE;
+    color: #7125BE;
+    padding: 0.25rem 0.8rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    transition: all 0.2s ease-in-out;
+  }
+
+  .btn-outline-primary:hover {
+    background: #7125BE;
+    color: #fff;
+  }
+
+  .btn-success {
+    background: #43a047;
+    color: #fff;
+    border: none;
+  }
+
+  /* Training toast banner */
+  .training-toast {
+    display: none;
+    background: linear-gradient(135deg, #f3eaff 0%, #e8f0fe 100%);
+    border: 1px solid #d4bfff;
+    border-radius: 10px;
+    padding: 14px 20px;
+    margin: 0 12px 16px;
+    animation: toastFadeIn 0.4s ease;
+  }
+  .training-toast .toast-icon {
+    font-size: 1.3rem;
+    margin-right: 10px;
+  }
+  .training-toast .toast-text {
+    font-size: 0.88rem;
+    color: #4a1582;
+    transition: opacity 0.3s ease;
+  }
+  .training-toast .toast-text.fade-out {
+    opacity: 0;
+  }
+  @keyframes toastFadeIn {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+</style>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // ── Training toast with rotating tips ──
+  var trainingTips = [
+    "Your chatbot is learning from your documents right now...",
+    "Tip: Text-based PDFs train faster than scanned documents.",
+    "QuerySafe uses AI embeddings to find the most relevant answers.",
+    "Tip: Upload clean, structured documents for the best accuracy.",
+    "Your chatbot will be ready in just a few minutes!",
+    "Tip: You can embed your chatbot on any website with one line of code.",
+    "Fun fact: Each text chunk is compressed into a 384-dimensional vector for search!",
+    "Tip: Add custom instructions to control your bot's tone and personality.",
+    "Tip: Add starter questions so visitors know what to ask your bot.",
+    "QuerySafe processes your documents locally before generating embeddings.",
+    "Tip: Shorter, focused documents give better answers than long, general ones."
+  ];
+  var tipIndex = 0;
+  var toastEl = document.getElementById('training-toast');
+  var toastText = document.getElementById('training-toast-text');
+
+  // Check if any chatbot row has training status
+  var hasTraining = document.querySelectorAll('.status-badge-training').length > 0;
+  if (hasTraining && toastEl) {
+    toastEl.style.display = 'block';
+    setInterval(function() {
+      toastText.classList.add('fade-out');
+      setTimeout(function() {
+        tipIndex = (tipIndex + 1) % trainingTips.length;
+        toastText.textContent = trainingTips[tipIndex];
+        toastText.classList.remove('fade-out');
+      }, 300);
+    }, 8000);
+  }
+
+  // Status polling
+  var pollingInterval = setInterval(function() {
+    fetch("{% url 'chatbot_status' %}")
+      .then(response => response.json())
+      .then(data => {
+        let now = Date.now() / 1000;
+        let allExpired = true;
+        data.forEach(function(bot) {
+          var row = document.getElementById("chatbot-row-" + bot.chatbot_id);
+          if(row) {
+            var createdAt = parseFloat(row.getAttribute("data-created-at"));
+            if((now - createdAt) < 120) {
+              allExpired = false;
+              var elem = document.getElementById("status-" + bot.chatbot_id);
+              if (elem) {
+                if (bot.status === 'trained') {
+                  // Reload the page when status is "trained"
+                  location.reload();
+                } else {
+                  // Update the status badge as before
+                  elem.innerHTML = bot.status.charAt(0).toUpperCase() + bot.status.slice(1);
+                  var badgeClass;
+                  switch(bot.status) {
+                    case 'trained': badgeClass = 'success'; break;
+                    case 'training': badgeClass = 'warning'; break;
+                    default: badgeClass = 'secondary';
+                  }
+                  elem.className = `badge badge-sm bg-gradient-${badgeClass} ${bot.status === 'training' ? 'status-badge-training' : ''}`;
+                  
+                  // Update button states
+                  const widgetButton = document.getElementById(`widget-code-${bot.chatbot_id}`);
+                  const actionButtons = row.querySelectorAll('.btn-group .btn');
+                  
+                  if (bot.status === 'trained') {
+                    widgetButton.classList.remove('disabled', 'opacity-50');
+                    widgetButton.removeAttribute('disabled');
+                    actionButtons.forEach(btn => {
+                      btn.classList.remove('disabled', 'opacity-50');
+                      btn.removeAttribute('disabled');
+                    });
+                  } else {
+                    widgetButton.classList.add('disabled', 'opacity-50');
+                    widgetButton.setAttribute('disabled', '');
+                    actionButtons.forEach(btn => {
+                      btn.classList.add('disabled', 'opacity-50');
+                      btn.setAttribute('disabled', '');
+                    });
+                  }
+                }
+              }
+            }
+          }
+        });
+        if (allExpired) {
+          clearInterval(pollingInterval);
+          console.log("Polling stopped; all chatbots are older than 2 minutes.");
+        }
+      })
+      .catch(error => console.error("Error updating chatbot status:", error));
+  }, 10000);
+
+  // Copy snippet function
+  window.copySnippet = function(chatbotId) {
+    const snippetElement = document.getElementById(`snippet-${chatbotId}`);
+    const snippetText = snippetElement.textContent.trim();
+
+    Swal.fire({
+      title: `<div class="swal-header">
+                <i class="material-symbols-rounded swal-icon">code</i>
+                <span class="swal-title">Embed Widget Code</span>
+              </div>`,
+      html: `
+        <div class="swal-instructions">
+          Copy the code below and paste it onto every page of your website. <br>
+          1. Paste this code as high in the <head> of the page as possible:
+          <code>&lt;/head&gt;</code> tag:
+        </div>
+        <div class="swal-code-container">
+          <pre class="swal-code"><code id="swal-snippet">${snippetText.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</code></pre>
+          
+        </div>
+        <button id="swal-copy-btn" class="btn btn-outline-primary btn-sm">
+            <i class="material-symbols-rounded">content_copy</i> Copy Code
+          </button>
+      `,
+      showConfirmButton: false,
+      showCloseButton: true,
+      customClass: {
+        popup: 'swal-compact'
+      },
+      didOpen: () => {
+        document.getElementById('swal-copy-btn').onclick = function() {
+          const code = document.getElementById('swal-snippet').innerText;
+          navigator.clipboard.writeText(code).then(() => {
+            this.innerHTML = '<i class="material-symbols-rounded">check_circle</i> Copied!';
+            this.classList.remove('btn-outline-primary');
+            this.classList.add('btn-success');
+            setTimeout(() => {
+              this.innerHTML = '<i class="material-symbols-rounded">content_copy</i> Copy Code';
+              this.classList.remove('btn-success');
+              this.classList.add('btn-outline-primary');
+            }, 1500);
+          });
+        };
+      }
+    });
+  };
+
+  // Status change confirmation using SweetAlert2
+  window.confirmStatusChange = function(chatbotId, currentStatus) {
+    const newStatus = currentStatus.toLowerCase() === 'trained' ? 'inactive' : 'trained';
+    const title = newStatus === 'inactive' ? 'Disable Chatbot?' : 'Enable Chatbot?';
+    const text = newStatus === 'inactive' ? 
+      'Are you sure you want to disable this chatbot?' : 
+      'Are you sure you want to enable this chatbot?';
+    
+    Swal.fire({
+      title: title,
+      text: text,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#3085d6',
+      cancelButtonColor: '#d33',
+      confirmButtonText: 'Yes, proceed!'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        fetch("{% url 'change_chatbot_status' %}", {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+          },
+          body: JSON.stringify({
+            chatbot_id: chatbotId,
+            new_status: newStatus
+          })
+        })
+        .then(response => response.json())
+        .then(data => {
+          if (data.success) {
+            Swal.fire(
+              'Success!',
+              `Chatbot has been ${newStatus === 'inactive' ? 'disabled' : 'enabled'}.`,
+              'success'
+            ).then(() => {
+              location.reload();
+            });
+          } else {
+            Swal.fire(
+              'Error!',
+              data.error || 'Failed to change status',
+              'error'
+            );
+          }
+        })
+        .catch(error => {
+          console.error('Error:', error);
+          Swal.fire(
+            'Error!',
+            'An error occurred while changing status.',
+            'error'
+          );
+        });
+      }
+    });
+  };
+});
+</script>
+{% endblock %}

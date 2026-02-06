@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Chatbot Created Successfully</title>
+  </head>
+  <body style="background: #f5f7fa; font-family: 'Inter', 'Segoe UI', Arial, sans-serif; color: #23272f; font-size: 13px; margin: 0; padding: 0;">
+    <div style="max-width:480px; margin:40px auto; background: #fff; border-radius: 18px; box-shadow: 0 2px 2px rgba(103,58,183,0.1), 0 3px 1px -2px rgba(103,58,183,0.18), 0 1px 5px rgba(103,58,183,0.15); overflow: hidden;">
+      <!-- Brand Bar -->
+      <div style="height: 6px; background: linear-gradient(90deg, #673ab7, #000254, #5c34ac);"></div>
+      <!-- Header with Logo -->
+      <div style="background: linear-gradient(120deg, #673ab7 60%, #673ab7 100%); padding: 26px; text-align: center;">
+        <a href="https://querysafe.metricvibes.com/" style="text-decoration: none;">
+          <img src="https://lp-querysafe.metricvibes.com/logo.png" alt="QuerySafe" style="width:240px; border-radius: 12px; box-shadow: 0 2px 8px rgba(26,115,232,0.08); object-fit: contain; margin-bottom: 8px;" />
+        </a>
+      </div>
+      <!-- Card Section -->
+      <div style="background: #fff; border-radius: 18px; margin: 0 14px; margin-top: -18px; box-shadow: 0 2px 8px rgba(233,30,99,0.04); padding: 20px 12px 12px 12px;">
+        <div style="text-align: center;">
+          <!-- Title -->
+          <div style="margin-bottom: 12px;">
+            <h2 style="font-size: 1.5rem; font-weight: 700; margin: 0; color: #34a853;">
+              Chatbot Created Successfully
+            </h2>
+          </div>
+          <!-- Greeting -->
+          <div style="font-size: 1rem; font-weight: 600; margin-bottom: 10px;">
+            Hello, {{ name }}!
+          </div>
+          <!-- Message -->
+          <div style="color: #6c757d; font-size: 0.95rem; margin-bottom: 18px; line-height: 1.5;">
+            Your chatbot has been created and is now ready to use. Please review the details below:
+          </div>
+          <!-- Chatbot Details -->
+          <div style="text-align: left; padding: 10px 16px; background: #eef2f7; border-radius: 12px; margin-bottom: 18px; font-size: 0.93rem; color: #23272f; line-height: 1.5;">
+            <p style="margin: 6px 0;"><strong>Chatbot Name:</strong> {{ chatbot_name }}</p>
+            <p style="margin: 6px 0;"><strong>Chatbot Type:</strong> {{ chatbot_type }}</p>
+            <p style="margin: 6px 0;"><strong>Created On:</strong> {{ created_on }}</p>
+            <p style="margin: 6px 0;"><strong>Usage Limit:</strong> {{ usage_limit }}</p>
+          </div>
+          <!-- CTA Buttons -->
+          <div style="text-align: center;">
+            <a href="{{ dashboard_url }}" style="display: inline-block; margin: 16px 6px 0 6px; padding: 8px 22px; background: linear-gradient(90deg, #673ab7, #009688); color: #fff; font-size: 0.98rem; font-weight: 600; border-radius: 8px; text-decoration: none; box-shadow: 0 2px 2px rgba(103,58,183,0.1), 0 3px 1px -2px rgba(103,58,183,0.18), 0 1px 5px rgba(103,58,183,0.15); transition: background 0.2s;">
+              Go to Dashboard
+            </a>
+            <a href="{{ chatbot_details_url }}" style="display: inline-block; margin: 16px 6px 0 6px; padding: 8px 22px; background: linear-gradient(90deg, #673ab7, #009688); color: #fff; font-size: 0.98rem; font-weight: 600; border-radius: 8px; text-decoration: none; box-shadow: 0 2px 2px rgba(103,58,183,0.1), 0 3px 1px -2px rgba(103,58,183,0.18), 0 1px 5px rgba(103,58,183,0.15); transition: background 0.2s;">
+              View Chatbot Details
+            </a>
+          </div>
+        </div>
+        <!-- Footer Block -->
+        <div style="margin-top: 28px; padding: 14px 10px; border-top: 1px solid #ececec; text-align: center; font-size: 0.58rem; color: #6c757d; line-height: 1.5;">
+          <div style="margin: 4px 0;">
+            <a href="mailto:support@querysafe.com" style="color: #673ab7; text-decoration: none; margin: 0 6px;">support@querysafe.com</a> | 
+            <a href="#" style="color: #673ab7; text-decoration: none; margin: 0 6px;">Help Center</a>
+          </div>
+          <div style="margin: 4px 0;">
+            © 2025 {{ project_name }} - A Metric Vibes product.<br />
+            This is an automated message. Please do not reply.<br />
+            <a href="https://querysafe.metricvibes.com/policies" style="color: #673ab7; text-decoration: none; margin: 0 6px;">Privacy Policy</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html> 

@@ -1,0 +1,158 @@
+{% extends 'user_querySafe/include/auth-base.html' %}
+{% load static %}
+
+{% block title %}Verify OTP | {{ block.super }}{% endblock %}
+
+{% block content %}
+<main class="main-content mt-0 ps">
+    <div class="page-header align-items-start min-vh-100" style="background-image: url('{% static 'user_querySafe/img/curved-images/curved14.jpg' %}');">
+        <span class="mask bg-gradient-dark opacity-6"></span>
+        <div class="container my-auto">
+            <div class="row">
+                <div class="col-lg-4 col-md-8 col-12 mx-auto">
+                    <div class="card z-index-0 fadeIn3 fadeInBottom">
+
+                        <div class="card-header p-0 position-relative mt-n4 mx-3 z-index-2">
+                            <div class="bg-gradient-primary shadow-primary border-radius-lg py-3 pe-1">
+                                <h4 class="text-white font-weight-bolder text-center mt-2 mb-0">Verify Your Email</h4>
+                                <p class="text-white text-center mb-0">Enter the OTP sent to {{ request.session.registration_data.email }}</p>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <form role="form" method="POST">
+                                {% csrf_token %}
+                                <div class="input-group input-group-outline mb-3">
+                                    {{ form.otp }}
+                                </div>
+                                <div class="text-center">
+                                    <button type="submit" class="btn bg-gradient-primary w-100 my-4 mb-2">
+                                        <i class="material-symbols-rounded me-2">verified</i>
+                                        Verify OTP
+                                    </button>
+                                </div>
+                                <div class="text-center">
+                                    <p class="mb-0 text-sm">
+                                        Didn't receive OTP? 
+                                        <a href="javascript:void(0);" id="resendOTP" class="text-primary text-gradient font-weight-bold">
+                                            Resend OTP
+                                        </a>
+                                        <span id="timer" class="text-sm text-muted ms-1"></span>
+                                    </p>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+
+<style>
+.bg-gradient-primary {
+    background: linear-gradient(45deg, #7125be, #954ddb) !important;
+}
+
+.text-primary, .text-primary.text-gradient {
+    background: linear-gradient(45deg, #7125be, #954ddb);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.alert {
+    border: 0;
+    border-radius: 0.5rem;
+}
+
+.alert.alert-success {
+    background: linear-gradient(45deg, #2dcecc, #2dce89);
+}
+
+.alert.alert-danger {
+    background: linear-gradient(45deg, #f5365c, #f56036);
+}
+
+#resendOTP {
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+#resendOTP.disabled {
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+#resendOTP:not(.disabled):hover {
+    animation: pulse 1s infinite;
+}
+</style>
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const resendBtn = document.getElementById('resendOTP');
+    const timerSpan = document.getElementById('timer');
+    let timeLeft = 30;
+    let timerId = null;
+    let isResending = false; // Add flag to prevent duplicate requests
+
+    function updateTimer() {
+        if (timeLeft > 0) {
+            timerSpan.textContent = `(${timeLeft}s)`;
+            resendBtn.classList.add('disabled');
+            timeLeft--;
+        } else {
+            timerSpan.textContent = '';
+            resendBtn.classList.remove('disabled');
+            clearInterval(timerId);
+        }
+    }
+
+    // Initialize timer
+    updateTimer();
+    timerId = setInterval(updateTimer, 1000);
+
+    // Handle resend click with debounce
+    resendBtn.addEventListener('click', function(e) {
+        e.preventDefault(); // Prevent any default action
+        
+        if (!resendBtn.classList.contains('disabled') && !isResending) {
+            isResending = true; // Set flag to prevent duplicate requests
+            
+            fetch('{% url "resend_otp" %}', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Reset timer
+                    timeLeft = 30;
+                    updateTimer();
+                    timerId = setInterval(updateTimer, 1000);
+                    showToast('success', data.message);
+                } else {
+                    showToast('error', data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showToast('error', 'Failed to send OTP. Please try again.');
+            })
+            .finally(() => {
+                isResending = false; // Reset flag after request completes
+            });
+        }
+    });
+});
+</script>
+{% endblock %}
+{% endblock %}

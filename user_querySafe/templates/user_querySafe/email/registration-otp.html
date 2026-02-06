@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Verify Your Account</title>
+  </head>
+  <body style="background: #f5f7fa; font-family: 'Inter', 'Segoe UI', Arial, sans-serif; color: #23272f; font-size: 13px; margin: 0; padding: 0;">
+    <div class="email-wrapper" style="max-width:480px; margin:40px auto; background:#fff; border-radius:18px; box-shadow:0 2px 2px rgba(103,58,183,0.1), 0 3px 1px -2px rgba(103,58,183,0.18), 0 1px 5px rgba(103,58,183,0.15); overflow:hidden;">
+      <div class="brand-bar" style="height:6px; background:linear-gradient(90deg, #673ab7, #000254, #5c34ac);"></div>
+      <div class="header" style="background:linear-gradient(120deg, #673ab7 60%, #673ab7 100%); padding:26px; text-align:center;">
+        <a href="https://querysafe.metricvibes.com/">
+          <img src="https://lp-querysafe.metricvibes.com/logo.png" alt="QuerySafe" class="brand-logo" style="width:240px; border-radius:12px; box-shadow:0 2px 8px rgba(26,115,232,0.08); object-fit:contain; margin-bottom:8px;" />
+        </a>
+      </div>
+      <div class="card" style="background:#fff; border-radius:18px; margin:0 14px; margin-top:-18px; box-shadow:0 2px 8px rgba(233,30,99,0.04); padding:20px 12px 12px 12px;">
+        <div class="card-body">
+          <div class="purpose-heading" style="text-align:center; margin-bottom:12px;">
+            <h2 style="font-size:1.3rem; font-weight:700; margin:0; color:#673ab7;">Verify Your Account</h2>
+          </div>
+          <div class="greeting" style="font-size:1rem; font-weight:600; margin-bottom:7px;">Hello, {{ name }}!</div>
+          <div class="message" style="color:#6c757d; font-size:0.95rem; margin-bottom:18px; text-align:center; line-height:1.5;">
+            Thank you for choosing <strong>QuerySafe</strong>! To secure your account, please use the One-Time Password (OTP) below to verify your identity.
+          </div>
+          <div class="otp-section" style="text-align:center; background:linear-gradient(90deg, #e3f0fc 60%, #f3e8fd 100%); border-radius:12px; padding:16px 0 10px 0; margin-bottom:20px; box-shadow:0 2px 8px rgba(233,30,99,0.06);">
+            <div class="otp-label" style="font-size:0.95rem; color:#673ab7; font-weight:500; margin-bottom:5px;">Your Verification Code</div>
+            <div class="otp" style="font-size:1.6rem; font-weight:700; letter-spacing:12px; color:#673ab7; background:#fff; border-radius:8px; padding:8px 0; display:inline-block; min-width:200px; box-shadow:0 1px 4px rgba(60,72,88,0.06);">
+              {{ otp }}
+            </div>
+            <div class="validity" style="font-size:0.9rem; color:#34a853; font-weight:500; margin-top:6px;">
+              <span class="timer-icon">⏱</span> Valid for 10 minutes
+            </div>
+          </div>
+          <div class="note" style="font-size:0.9rem; color:#6c757d; margin-bottom:12px; text-align:center;">
+            <p><strong>Note:</strong> This OTP is confidential. If you did not request this, please ignore or contact our support immediately.</p>
+          </div>
+        </div>
+        <div class="caution" style="font-size:0.85rem; color:#ea4335; text-align:center; margin-top:10px;">
+          <p>Caution: Never share your OTP or verification link with anyone.</p>
+        </div>
+        <div class="footer-block" style="margin-top:28px; padding:14px 10px; border-top:1px solid #ececec; text-align:center; font-size:0.88rem; color:#6c757d; line-height:1.5;">
+          <div class="contact-links">
+            <a href="mailto:info@metricvibes.com" style="color:#673ab7; text-decoration:none; margin:0 6px;">info@metricvibes.com</a> |
+            <a href="#" style="color:#673ab7; text-decoration:none; margin:0 6px;">Help Center</a>
+          </div>
+          <div class="policy" style="margin-top:4px;">
+            © 2025 {{ project_name }} - A Metric Vibes product.<br />
+            This is an automated message. Please do not reply.<br />
+            <a href="https://querysafe.metricvibes.com/policies" style="color:#673ab7; text-decoration:none; margin:0 6px;">Privacy Policy</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

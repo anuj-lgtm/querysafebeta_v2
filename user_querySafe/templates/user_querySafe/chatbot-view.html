@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+{% load static %}
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ chatbot.name }} - AI Chatbot</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            background: #F8FAFC;
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
+        }
+
+        .arrow-svg-highlight {
+            position: fixed;
+            top: 12%;
+            left: 45%;
+            width: 75vw;
+            min-width: 160px;
+            /* max-width: 420px; */
+            pointer-events: none;
+            z-index: 1000;
+            transform: translateX(-30%) rotate(8deg);
+            opacity: 0.96;
+            transition: width 0.3s;
+            /* Remove the arrow-bounce animation since we're using a GIF */
+            animation: none;
+        }
+
+
+        .highlight-text {
+            position: fixed;
+            top: 18%;
+            left: 60%;
+            transform: translateX(-50%);
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #7125BE;
+            background: #fff;
+            padding: 10px 22px;
+            border-radius: 30px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+            z-index: 1001;
+            animation: float 2s ease-in-out infinite;
+            white-space: nowrap;
+        }
+        @media (max-width: 600px) {
+            .highlight-text {
+                position: fixed;
+                top: 60%;
+            }
+
+            .arrow-svg-highlight {
+                width: 85vw;
+                top: 60%;
+                left: 30%;
+                min-width: 100px;
+                max-width: 95vw;
+            }
+        }
+
+        @keyframes float {
+
+            0%,
+            100% {
+                transform: translate(-50%, -5px);
+            }
+
+            50% {
+                transform: translate(-50%, 5px);
+            }
+        }
+
+    </style>
+</head>
+
+<body>
+    <div class="highlight-text">Try the chatbot below!</div>
+    <img src="{% static 'user_querySafe/img/curved-arrow.gif' %}" alt="Arrow Animation" class="arrow-svg-highlight" />
+    {% include 'user_querySafe/chatbot-widget.html' %}
+</body>
+
+</html>

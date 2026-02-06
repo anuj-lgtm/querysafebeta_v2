@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>{{ project_name|default:'QuerySafe' }} — Secure Payment</title>
+        <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+        <style>
+            :root{--brand-a:#4b0082;--brand-b:#7b1fa2;--accent:#21d4fd;--muted:#6b7280}
+            body{background:linear-gradient(135deg,#f6f7fb 0%,#f0f4ff 100%);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;color:#111;margin:0;padding:32px;}
+            .center-wrap{max-width:720px;margin:40px auto}
+            .card-surface{background:#fff;border-radius:12px;box-shadow:0 10px 30px rgba(20,20,50,0.08);overflow:hidden}
+            .header{background:linear-gradient(135deg,var(--brand-a),var(--brand-b));color:#fff;padding:22px 24px;display:flex;align-items:center;justify-content:space-between}
+            .brand{font-weight:700;font-size:18px}
+            .secure-badge{background:rgba(255,255,255,0.08);padding:6px 10px;border-radius:8px;font-size:13px;display:inline-flex;align-items:center;gap:8px}
+            .body{padding:28px 24px;display:flex;align-items:center;justify-content:space-between;gap:20px}
+            .plan-info{flex:1}
+            .plan-title{font-size:20px;font-weight:700;margin:0 0 6px}
+            .plan-sub{color:var(--muted);margin:0 0 16px}
+            .amount{font-size:28px;font-weight:800;color:var(--brand-b)}
+            .pay-actions{width:260px;text-align:center}
+            .pay-btn{background:linear-gradient(135deg,var(--brand-b),var(--brand-a));border:none;color:#fff;font-weight:700;padding:12px 18px;border-radius:10px;cursor:pointer;width:100%}
+            .pay-btn:active{transform:translateY(1px)}
+            .small{font-size:13px;color:var(--muted)}
+            .trust-row{display:flex;gap:10px;align-items:center;justify-content:center;margin-top:10px}
+            .trust-pill{background:#f3f4f6;padding:6px 10px;border-radius:999px;font-size:13px;color:#374151}
+            @media(max-width:640px){.body{flex-direction:column;align-items:stretch}.pay-actions{width:100%}}
+        </style>
+</head>
+<body>
+    <div class="center-wrap">
+        <div class="card-surface">
+            <div class="header">
+                <div class="brand">{{ project_name|default:'QuerySafe' }}</div>
+                <div class="secure-badge">🔒 Secure Payment</div>
+            </div>
+            <div class="body">
+                <div class="plan-info">
+                    <p class="plan-title">{{ plan.plan_name|default:'Plan' }}</p>
+                    <p class="plan-sub">Checkout ID: <strong>{{ checkout.checkout_id }}</strong></p>
+                    <p class="amount">{% if plan.currency == 'INR' %}₹{% else %}{{ plan.currency }}{% endif %}{{ plan.amount }}</p>
+                    <p class="small">You will be redirected to a secure payment gateway. No card details are stored here.</p>
+                </div>
+
+                <div class="pay-actions">
+                    <button id="rzp-button" class="pay-btn" aria-label="Pay now">Pay Now</button>
+                    <div class="trust-row" role="status">
+                        <div class="trust-pill">Trusted Gateway</div>
+                        <div class="trust-pill">PCI Compliant</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Keep original Razorpay options intact (prefill/notes etc are passed from server)
+        const razorpayOrderId = "{{ razorpay_order_id|default:''|escapejs }}";
+        const amountPaise = {{ amount_paise|default:0 }};
+        const currency = "{{ currency|default:'INR'|escapejs }}";
+
+        function buildOptions(){
+            return {
+                "key": "{{ key_id|escapejs }}",
+                "amount": amountPaise,
+                "currency": currency,
+                "name": "{{ project_name|default:'QuerySafe'|escapejs }}",
+                "description": "Payment for checkout {{ checkout.checkout_id|escapejs }}",
+                "order_id": razorpayOrderId,
+                "prefill": {
+                        "name": "{{ billing_defaults.full_name|escapejs }}",
+                        "email": "{{ billing_defaults.email|escapejs }}",
+                        "contact": "{{ billing_defaults.phone|default:''|escapejs }}"
+                },
+                "notes": {
+                        "checkout_id": "{{ checkout.checkout_id|escapejs }}",
+                        "plan_id": "{{ plan.plan_id|default:''|escapejs }}",
+                        "plan_name": "{{ plan.plan_name|default:''|escapejs }}"
+                },
+                "redirect": true,
+                "callback_url": window.location.origin + "/plan/order-status",
+            };
+        }
+
+        function openRazorpay(){
+            if(!razorpayOrderId || amountPaise <= 0){
+                alert('Payment is not ready. Please try again or contact support.');
+                return;
+            }
+            const opts = buildOptions();
+            try{
+                const rzp = new Razorpay(opts);
+                rzp.open();
+            }catch(err){
+                console.error('Razorpay open error', err);
+            }
+        }
+
+        // Attach button handler (allow multiple clicks / retries)
+        document.getElementById('rzp-button').addEventListener('click', function(e){
+            openRazorpay();
+        });
+
+        // Auto-open on page load (small delay to ensure checkout script is ready)
+        window.addEventListener('load', function(){
+            setTimeout(openRazorpay, 600);
+        });
+    </script>
+</body>
+</html>

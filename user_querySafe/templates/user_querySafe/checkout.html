@@ -1,0 +1,425 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>Checkout | {{ plan.plan_name }} - QuerySafe</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <style>
+      :root {
+        --brand-a: #4b0082;
+        --brand-b: #7b1fa2;
+        --accent: #21d4fd;
+        --success: #10b981;
+        --danger: #ef4444;
+      }
+      * { box-sizing: border-box; }
+      body {
+        background: linear-gradient(135deg, #f6f7fb 0%, #f0f4ff 100%);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        color: #1f2937;
+        min-height: 100vh;
+        padding: 20px;
+      }
+      .checkout-wrapper { max-width: 1080px; margin: 0 auto; }
+      .checkout-hero {
+        background: linear-gradient(135deg, var(--brand-a) 0%, var(--brand-b) 100%);
+        color: #fff;
+        padding: 32px;
+        border-radius: 12px 12px 0 0;
+        box-shadow: 0 4px 12px rgba(75, 0, 130, 0.15);
+      }
+      .checkout-hero h3 {
+        font-size: 28px;
+        font-weight: 700;
+        margin: 0;
+      }
+      .checkout-hero .subtitle {
+        font-size: 14px;
+        opacity: 0.9;
+        margin-top: 4px;
+      }
+      .plan-total {
+        font-size: 32px;
+        font-weight: 700;
+        text-align: right;
+      }
+      .plan-total-strike {
+        font-size: 14px;
+        opacity: 0.75;
+        text-decoration: line-through;
+        margin-top: 4px;
+      }
+      .checkout-card {
+        background: #fff;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 10px 40px rgba(20, 20, 50, 0.12);
+      }
+      .checkout-body {
+        display: grid;
+        grid-template-columns: 1fr 380px;
+        gap: 0;
+      }
+      .form-section {
+        padding: 40px;
+        border-right: 1px solid #e5e7eb;
+      }
+      .muted { color: #6b7280; }
+      .summary-section {
+        background: linear-gradient(180deg, #fafbfc 0%, #f3f4f6 100%);
+        padding: 32px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+      }
+      .summary-section h6 {
+        font-size: 14px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: #6b7280;
+        margin-bottom: 16px;
+      }
+      .plan-name {
+        font-size: 18px;
+        font-weight: 700;
+        color: #111;
+        margin-bottom: 12px;
+      }
+      .plan-badge {
+        display: inline-block;
+        padding: 4px 8px;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 600;
+        margin-bottom: 12px;
+      }
+      .plan-badge-trial {
+        background: #fef08a;
+        color: #92400e;
+      }
+      .plan-detail {
+        font-size: 13px;
+        color: #4b5563;
+        margin-bottom: 8px;
+        display: flex;
+        align-items: center;
+      }
+      .plan-detail i {
+        margin-right: 6px;
+        color: var(--brand-b);
+      }
+      .summary-divider {
+        margin: 16px 0;
+        border: 0;
+        border-top: 1px solid #d1d5db;
+      }
+      .summary-total {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+      }
+      .summary-total-label {
+        font-size: 13px;
+        color: #6b7280;
+        font-weight: 500;
+      }
+      .summary-total-amount {
+        font-size: 24px;
+        font-weight: 700;
+        color: var(--brand-b);
+      }
+      .form-label {
+        font-size: 14px;
+        font-weight: 600;
+        color: #1f2937;
+        margin-bottom: 8px;
+      }
+      .required::after {
+        content: " *";
+        color: var(--danger);
+      }
+      .form-control {
+        border: 1px solid #d1d5db;
+        border-radius: 8px;
+        padding: 10px 14px;
+        font-size: 14px;
+        transition: all 0.3s;
+      }
+      .form-control:focus {
+        border-color: var(--brand-b);
+        box-shadow: 0 0 0 3px rgba(123, 31, 162, 0.1);
+      }
+      .form-control[readonly] {
+        background: #f9fafb;
+        color: #6b7280;
+      }
+      .pay-btn {
+        background: linear-gradient(135deg, var(--brand-b) 0%, var(--brand-a) 100%);
+        border: none;
+        color: #fff;
+        font-size: 16px;
+        font-weight: 700;
+        padding: 14px 24px;
+        border-radius: 8px;
+        width: 100%;
+        transition: all 0.3s;
+        box-shadow: 0 4px 12px rgba(123, 31, 162, 0.3);
+      }
+      .pay-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(123, 31, 162, 0.4);
+        color: #fff;
+      }
+      .pay-btn:active {
+        transform: translateY(0);
+      }
+      .form-section h6 {
+        font-size: 16px;
+        font-weight: 700;
+        color: #111;
+        margin-bottom: 20px;
+      }
+      @media (max-width: 768px) {
+        .checkout-body {
+          grid-template-columns: 1fr;
+        }
+        .form-section {
+          border-right: none;
+          border-bottom: 1px solid #e5e7eb;
+          padding: 28px;
+        }
+        .summary-section {
+          padding: 28px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="checkout-wrapper">
+      <div class="checkout-hero d-flex justify-content-between align-items-start">
+        <div>
+          <h3>Checkout</h3>
+          <div class="subtitle">Secure payment for your plan</div>
+        </div>
+        <div class="text-end">
+          <div class="plan-total">{% if plan.currency == 'INR' %}₹{% else %}{{ plan.currency }}{% endif %}{{ plan.amount }}</div>
+          {% if plan.is_trial and plan.parent_plan %}
+          <div class="plan-total-strike">{% if plan.parent_plan.currency == 'INR' %}₹{% else %}{{ plan.parent_plan.currency }}{% endif %}{{ plan.parent_plan.amount }}</div>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="checkout-card">
+        <div class="checkout-body">
+        <div class="form-section">
+          <form id="checkout-form" method="post" action="{% url 'order_payment' %}">
+            {% csrf_token %}
+            <input type="hidden" name="checkout_id" value="{{ checkout_id }}">
+            <h6>Billing Details</h6>
+            <div class="mb-3">
+              <label class="form-label">Full name </label>
+              <input type="text" name="full_name" class="form-control" value="{{ billing_defaults.full_name|default_if_none:'' }}" readonly>
+            </div>
+            <div class="row mb-3">
+                <div class="col-6">
+                    <label class="form-label">Email </label>
+                    <input type="email" name="email" class="form-control" value="{{ billing_defaults.email|default_if_none:'' }}" readonly>
+                </div>
+              <div class="col-6">
+                <label class="form-label required">Phone</label>
+                <input type="text" name="phone" id="phone" inputmode="numeric" maxlength="13" class="form-control" placeholder="Mobile number (digits only)" value="{{ billing_defaults.phone|default_if_none:'' }}" required>
+                <div class="invalid-feedback" id="phone-feedback">Please enter a valid phone number (10 digits).</div>
+              </div>
+            </div>
+            <div class="mb-3">
+              <label class="form-label required">Address </label>
+              <textarea name="address" id="address" class="form-control" rows="2" placeholder="Street, Apt, etc" required>{{ billing_defaults.address|default_if_none:'' }}</textarea>
+              <div class="invalid-feedback" id="address-feedback">Please enter your address (min 5 characters).</div>
+            </div>
+            <div class="row">
+              <div class="col-4 mb-3">
+                <label class="form-label required">City</label>
+                <input type="text" name="city" id="city" class="form-control" placeholder="City" value="{{ billing_defaults.city|default_if_none:'' }}" required>
+                <div class="invalid-feedback" id="city-feedback">Please enter your city.</div>
+              </div>
+              <div class="col-4 mb-3">
+                <label class="form-label required">State</label>
+                <input type="text" name="state" id="state" class="form-control" placeholder="State" value="{{ billing_defaults.state|default_if_none:'' }}" required>
+                <div class="invalid-feedback" id="state-feedback">Please enter your state.</div>
+              </div>
+              <div class="col-4 mb-3">
+                <label class="form-label required">PIN</label>
+                <input type="text" name="pin" id="pin" inputmode="numeric" maxlength="6" class="form-control" placeholder="Postal code" value="{{ billing_defaults.pin|default_if_none:'' }}" required>
+                <div class="invalid-feedback" id="pin-feedback">Please enter a valid PIN (6 digits).</div>
+              </div>
+              </div>
+            </form>
+          </div>
+
+        <div class="summary-section">
+          <h6>Plan Summary</h6>
+          {% if plan.is_trial %}
+          <div class="plan-badge plan-badge-trial">
+            <i class="bi bi-star-fill"></i> {{ plan.days }}-Day Trial
+          </div>
+          {% endif %}
+          <div class="plan-name">{{ plan.plan_name }}</div>
+          <div class="plan-detail">
+            <i class="bi bi-calendar-event"></i>
+            Duration: {{ plan.days }} days
+          </div>
+          <div class="plan-detail">
+            <i class="bi bi-robot"></i>
+            {{ plan.no_of_bot }} Chatbot{{ plan.no_of_bot|pluralize }}
+          </div>
+          <div class="plan-detail">
+            <i class="bi bi-chat-dots"></i>
+            {{ plan.no_of_query }} Queries
+          </div>
+          <div class="plan-detail">
+            <i class="bi bi-file-earmark"></i>
+            {{ plan.no_of_file }} Files
+          </div>
+          <div class="plan-detail">
+            <i class="bi bi-hdd"></i>
+            Max {{ plan.max_file_size }} MB/file
+          </div>
+          <hr class="summary-divider">
+          <div class="summary-total">
+            <div class="summary-total-label">Total</div>
+            <div class="summary-total-amount">{% if plan.currency == 'INR' %}₹{% else %}{{ plan.currency }}{% endif %}{{ plan.amount }}</div>
+          </div>
+          
+            <div class="d-grid mt-3">
+              <button type="submit" form="checkout-form" class="btn pay-btn">
+                <i class="bi bi-lock-fill"></i> Secure Payment
+              </button>
+            </div>
+        </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // Client-side validation only (JS): phone numeric only, pin numeric only, and other basic checks.
+      (function(){
+        const form = document.getElementById('checkout-form');
+        const phoneEl = document.getElementById('phone');
+        const pinEl = document.getElementById('pin');
+        const addressEl = document.getElementById('address');
+        const cityEl = document.getElementById('city');
+        const stateEl = document.getElementById('state');
+
+        function setValid(el){
+          el.classList.remove('is-invalid');
+          el.classList.add('is-valid');
+        }
+        function setInvalid(el){
+          el.classList.remove('is-valid');
+          el.classList.add('is-invalid');
+        }
+
+        function validatePhone(){
+          if(!phoneEl) return false;
+          // remove non-digit chars
+          let v = phoneEl.value.replace(/\D/g, '');
+          phoneEl.value = v;
+          if(v.length >= 10 && v.length <= 15){
+            setValid(phoneEl);
+            return true;
+          }
+          setInvalid(phoneEl);
+          return false;
+        }
+
+        function validatePin(){
+          if(!pinEl) return false;
+          let v = pinEl.value.replace(/\D/g, '');
+          // limit to 6 chars
+          v = v.substring(0, 6);
+          pinEl.value = v;
+          if(v.length === 6){
+            setValid(pinEl);
+            return true;
+          }
+          setInvalid(pinEl);
+          return false;
+        }
+
+        function validateAddress(){
+          if(!addressEl) return false;
+          const v = addressEl.value.trim();
+          if(v.length >= 5){
+            setValid(addressEl);
+            return true;
+          }
+          setInvalid(addressEl);
+          return false;
+        }
+
+        function validateCity(){
+          if(!cityEl) return false;
+          const v = cityEl.value.trim();
+          if(v.length >= 2){
+            setValid(cityEl);
+            return true;
+          }
+          setInvalid(cityEl);
+          return false;
+        }
+
+        function validateState(){
+          if(!stateEl) return false;
+          const v = stateEl.value.trim();
+          if(v.length >= 2){
+            setValid(stateEl);
+            return true;
+          }
+          setInvalid(stateEl);
+          return false;
+        }
+
+        // Attach input listeners
+        if(phoneEl) phoneEl.addEventListener('input', validatePhone);
+        if(pinEl) pinEl.addEventListener('input', validatePin);
+        if(addressEl) addressEl.addEventListener('input', validateAddress);
+        if(cityEl) cityEl.addEventListener('input', validateCity);
+        if(stateEl) stateEl.addEventListener('input', validateState);
+
+        // Submit handler
+        form.addEventListener('submit', function(e){
+          // run validations
+          const vPhone = validatePhone();
+          const vPin = validatePin();
+          const vAddr = validateAddress();
+          const vCity = validateCity();
+          const vState = validateState();
+
+          if(!(vPhone && vPin && vAddr && vCity && vState)){
+            e.preventDefault();
+            e.stopPropagation();
+            // focus first invalid
+            const firstInvalid = form.querySelector('.is-invalid');
+            if(firstInvalid) firstInvalid.focus();
+            return false;
+          }
+
+          // show a small spinner / disable button to avoid double-submit
+          const btn = form.querySelector('button[type=submit]');
+          if(btn){
+            btn.disabled = true;
+            const orig = btn.innerHTML;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Processing...';
+          }
+
+          return true;
+        });
+      })();
+    </script>
+  </body>
+</html>

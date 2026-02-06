@@ -1,0 +1,190 @@
+{% extends 'user_querySafe/include/base.html' %}
+{% load static %}
+{% block title %}Profile {{ block.super }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-2">
+    <!-- Profile Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-gradient-primary border-0">
+                <div class="card-body p-4">
+                    <div class="row align-items-center">
+                        <div class="col-auto">
+                            <div class="avatar avatar-xxl bg-white shadow-lg rounded-circle">
+                                <img src="{% get_media_prefix %}user-profile/default.png" alt="{{ user.name }}" class="rounded-circle">
+                            </div>
+                        </div>
+                        <div class="col">
+                            <h3 class="text-white mb-1">{{ user.name }}</h3>
+                            <p class="text-white-50 mb-2">{{ user.email }}</p>
+                            <div class="d-flex gap-2">
+                                <span class="badge bg-white text-primary">ID: {{ user.user_id }}</span>
+                                <span class="badge bg-success">{{ user.registration_status|title }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Profile Details -->
+        <div class="col-12 col-xl-4">
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-transparent p-3">
+                    <h5 class="mb-0">Profile Information</h5>
+                </div>
+                <div class="card-body">
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item border-0 px-0">
+                            <div class="d-flex align-items-center">
+                                <i class="material-symbols-rounded text-gradient text-primary p-2 me-3">person</i>
+                                <div>
+                                    <small class="text-muted d-block">Full Name</small>
+                                    <span class="font-weight-bold">{{ user.name }}</span>
+                                </div>
+                            </div>
+                        </li>
+                        <li class="list-group-item border-0 px-0">
+                            <div class="d-flex align-items-center">
+                                <i class="material-symbols-rounded text-gradient text-info p-2 me-3">mail</i>
+                                <div>
+                                    <small class="text-muted d-block">Email Address</small>
+                                    <span class="font-weight-bold">{{ user.email }}</span>
+                                </div>
+                            </div>
+                        </li>
+                        <li class="list-group-item border-0 px-0">
+                            <div class="d-flex align-items-center">
+                                <i class="material-symbols-rounded text-gradient text-success p-2 me-3">calendar_today</i>
+                                <div>
+                                    <small class="text-muted d-block">Member Since</small>
+                                    <span class="font-weight-bold">{{ user.created_at|date:"F j, Y" }}</span>
+                                </div>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Current Plan -->
+        <div class="col-12 col-xl-8">
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-transparent p-3 d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Current Plan Details</h5>
+                    {% if not active_plan %}
+                    <a href="{% url 'subscriptions' %}" class="btn btn-sm btn-primary">
+                        <i class="material-symbols-rounded align-middle me-1">add</i>
+                        Select Plan
+                    </a>
+                    {% endif %}
+                </div>
+                <div class="card-body">
+                    {% if active_plan %}
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="info-card mb-4">
+                                <div class="d-flex align-items-center mb-3">
+                                    <div class="icon-box text-primary me-3">
+                                        <i class="material-symbols-rounded">workspace_premium</i>
+                                    </div>
+                                    <div>
+                                        <small class="text-muted d-block">Plan Name</small>
+                                        <h6 class="mb-0">{{ active_plan.plan_name }}</h6>
+                                    </div>
+                                </div>
+                                <div class="progress bg-light" style="height: 3px;">
+                                    <div class="progress-bar bg-primary" style="width: 100%;"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="info-card mb-4">
+                                <div class="d-flex align-items-center mb-3">
+                                    <div class="icon-box text-success me-3">
+                                        <i class="material-symbols-rounded">event_available</i>
+                                    </div>
+                                    <div>
+                                        <small class="text-muted d-block">Valid Until</small>
+                                        <h6 class="mb-0">{{ active_plan.expire_date|date:"F j, Y" }}</h6>
+                                    </div>
+                                </div>
+                                <div class="progress bg-light" style="height: 3px;">
+                                    <div class="progress-bar bg-success" style="width: 100%;"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table align-items-center mb-0">
+                            <tbody>
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <i class="material-symbols-rounded text-primary me-3">smart_toy</i>
+                                            <span>Chatbots Allowed</span>
+                                        </div>
+                                    </td>
+                                    <td class="text-end">
+                                        <span class="badge bg-primary">{{ active_plan.no_of_bot }}</span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <i class="material-symbols-rounded text-info me-3">question_answer</i>
+                                            <span>Queries per Bot</span>
+                                        </div>
+                                    </td>
+                                    <td class="text-end">
+                                        <span class="badge bg-info">{{ active_plan.no_query }}</span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <i class="material-symbols-rounded text-warning me-3">description</i>
+                                            <span>Documents per Bot</span>
+                                        </div>
+                                    </td>
+                                    <td class="text-end">
+                                        <span class="badge bg-warning">{{ active_plan.no_of_docs }}</span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <i class="material-symbols-rounded text-danger me-3">folder</i>
+                                            <span>Document Size Limit</span>
+                                        </div>
+                                    </td>
+                                    <td class="text-end">
+                                        <span class="badge bg-danger">{{ active_plan.doc_size_limit }}MB</span>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5">
+                        <div class="mb-4">
+                            <i class="material-symbols-rounded display-1 text-muted">workspace_premium</i>
+                        </div>
+                        <h5 class="text-muted mb-3">No Active Plan</h5>
+                        <p class="text-muted mb-4">Select a subscription plan to start using our services</p>
+                        <a href="{% url 'subscriptions' %}" class="btn btn-primary">
+                            <i class="material-symbols-rounded align-middle me-2">add_circle</i>
+                            Select Plan
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

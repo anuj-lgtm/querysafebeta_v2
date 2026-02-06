@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Checkout - {{ plan.plan_name }}</title>
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+</head>
+<body>
+    <style>
+        :root{
+            --accent: #3399cc;
+            --bg: #ffffff;
+            --muted: #666666;
+            --radius: 8px;
+            --max-width: 920px;
+            --container-padding: 20px;
+        }
+        html,body{height:100%;margin:0;font-family:Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; background:#f4f6f8;color:#222}
+        .checkout-card {
+            max-width: var(--max-width);
+            margin: 28px auto;
+            background: var(--bg);
+            border-radius: var(--radius);
+            box-shadow: 0 6px 30px rgba(20,20,20,0.08);
+            overflow: hidden;
+            display: flex;
+            align-items: stretch;
+        }
+        .summary {
+            width: 360px;
+            background: linear-gradient(135deg, #2f9ad6 0%, #1e86bf 100%);
+            color: #fff;
+            padding: 28px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        .summary h3 { margin: 0 0 8px 0; font-size:18px; font-weight:600 }
+        .summary .price { font-size: 34px; font-weight: 800; margin-top:6px }
+        .actions {
+            flex: 1;
+            padding: 28px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        .primary-btn {
+            background: var(--accent);
+            color: #fff;
+            border: none;
+            padding: 12px 22px;
+            font-size: 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            min-width: 220px;
+        }
+        .primary-btn[disabled]{ opacity: 0.6; cursor: not-allowed }
+        .secondary {
+            margin-top: 12px;
+            color: var(--muted);
+            font-size: 14px;
+        }
+        .retry-btn { display: none; margin-top: 16px; }
+        #checkout-message { font-size:14px }
+        .spinner { display:none; margin-top:12px }
+
+        /* Responsive: stack on small screens */
+        @media (max-width: 720px){
+            .checkout-card{ flex-direction: column; margin: 18px; }
+            .summary{ width:100%; padding:20px; text-align:center }
+            .summary .price{ font-size:28px }
+            .actions{ padding:20px }
+            .primary-btn, .retry-btn{ width:100%; min-width: auto }
+            .secondary{ font-size:13px }
+        }
+        @media (max-width:420px){
+            .summary h3 { font-size:16px }
+            .summary .price { font-size:26px }
+            .primary-btn{ padding:14px }
+        }
+    </style>
+
+    <div class="checkout-card">
+        <div class="summary">
+            <div>
+                <h3>QuerySafe</h3>
+                <div class="price">₹{{ plan.pricing }}</div>
+                <div style="opacity:0.9; margin-top:8px;">Plan: <strong>{{ plan.plan_name }}</strong></div>
+            </div>
+            <div style="font-size:12px; opacity:0.9">Secured by Razorpay</div>
+        </div>
+        <div class="actions">
+            <div style="text-align:center; width:100%">
+                <p style="margin-bottom:8px">Complete payment to activate your plan</p>
+                   <button id="rzp-button" class="primary-btn" aria-label="Pay for {{ plan.plan_name }}">Pay ₹{{ plan.pricing }}</button>
+                <div class="secondary">Using: <strong>{{ user.email }}</strong></div>
+                <button id="retry-btn" class="primary-btn retry-btn">Retry Payment</button>
+                <div id="checkout-message" style="margin-top:12px; color:#e74c3c; display:none"></div>
+                   <div id="checkout-spinner" class="spinner" aria-hidden="true">⏳ Preparing payment…</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const PLAN_ID = "{{ plan.plan_id|escapejs }}";
+        const KEY_ID = "{{ key_id|escapejs }}";
+        const BASE_URL = window.location.origin;  // Get absolute base URL
+
+        // Centralized checkout opener so we can auto-open and retry
+        let lastRzpInstance = null;
+        function openCheckout() {
+            document.getElementById('checkout-message').style.display = 'none';
+            document.getElementById('retry-btn').style.display = 'none';
+
+            // Step 1: Create an order via AJAX (like Flask /order endpoint)
+            fetch('/plan/api/create-order/' + PLAN_ID + '/', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken'),
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                }
+            })
+                .then(response => response.json())
+                .then(order => {
+                    // Step 2: Configure Razorpay options
+                    const options = {
+                        "key": KEY_ID,
+                        "amount": order.amount,
+                        "currency": "INR",
+                        "name": "QuerySafe",
+                        "description": "Plan: " + order.plan_name,
+                        "order_id": order.order_id,
+                        "prefill": {
+                            "name": "{{ user.name|escapejs }}",
+                            "email": "{{ user.email|escapejs }}"
+                        },
+
+                        // Keep redirect behaviour for wallet flows
+                        "redirect": true,
+                        "callback_url": BASE_URL + "/plan/verify-payment/",
+
+                        // show retry button if user dismisses
+                        "modal": {
+                            "confirm_close": true,
+                            "ondismiss": function() {
+                                // show retry UI
+                                document.getElementById('retry-btn').style.display = 'inline-block';
+                                const msg = document.getElementById('checkout-message');
+                                msg.textContent = 'Payment dialog closed. Click retry to try again.';
+                                msg.style.display = 'block';
+                            }
+                        },
+
+                        "theme": {
+                            "color": "#3399cc"
+                        }
+                    };
+
+                    // Step 3: Open Razorpay Checkout
+                    const rzp = new Razorpay(options);
+                    lastRzpInstance = rzp;
+                    try {
+                        rzp.open();
+                    } catch (e) {
+                        console.error('Razorpay open error', e);
+                        document.getElementById('checkout-message').textContent = 'Unable to open payment window. Please click Retry.';
+                        document.getElementById('checkout-message').style.display = 'block';
+                        document.getElementById('retry-btn').style.display = 'inline-block';
+                    }
+                })
+                .catch(err => {
+                    console.error(err);
+                    document.getElementById('checkout-message').textContent = 'Error creating order. Please try again.';
+                    document.getElementById('checkout-message').style.display = 'block';
+                    document.getElementById('retry-btn').style.display = 'inline-block';
+                });
+        }
+
+        // Attach to buttons
+        document.getElementById('rzp-button').addEventListener('click', openCheckout);
+        document.getElementById('retry-btn').addEventListener('click', function() {
+            this.style.display = 'none';
+            openCheckout();
+        });
+
+        // Auto-open when page loads (small delay so user sees the page)
+        window.addEventListener('load', function() {
+            // Only auto-open for first arrival; user can still retry
+            setTimeout(function(){
+                openCheckout();
+            }, 350);
+        });
+
+        // Helper function to get CSRF token from cookies
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+    </script>
+</body>
+</html>

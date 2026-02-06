@@ -1,0 +1,701 @@
+<div id="mv-chatbot-widget-root">
+  <div id="mv-chatbot-fab" onclick="mvToggleChatbotWidget()">
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="#fff">
+      <circle cx="12" cy="12" r="12" fill="#4b1a86"/>
+      <path d="M7 17v-2a4 4 0 0 1 4-4h2a4 4 0 0 1 4 4v2" stroke="#fff" stroke-width="2" fill="none"/>
+      <circle cx="9" cy="10" r="1" fill="#fff"/>
+      <circle cx="15" cy="10" r="1" fill="#fff"/>
+    </svg>
+  </div>
+  <div id="mv-chatbot-modal" style="display:none;">
+    <div id="mv-chatbot-header">
+      <div class="header-left">
+        <div class="logo-icon">
+          {% if chatbot_logo %}
+            <img src="{{ chatbot_logo }}" alt="{{ chatbot_name }}" width="32" height="32">
+          {% else %}
+            <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+              <circle cx="16" cy="16" r="16" fill="#4b1a86"/>
+              <text x="16" y="21" text-anchor="middle" font-size="16" fill="#fff" font-family="Segoe UI, Arial" font-weight="bold">{{ chatbot_name|slice:":2" }}</text>
+            </svg>
+          {% endif %}
+        </div>
+        <div class="header-title">
+          <div class="main-title">{{ chatbot_name }}</div>
+          <div class="sub-title">AI Powered Support Agent</div>
+        </div>
+      </div>
+      <button id="mv-chatbot-close" onclick="mvCloseChatbotWidget()" title="Close">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+          <circle cx="12" cy="12" r="12" fill="#f4f4f4"/>
+          <path d="M8 8l8 8M16 8l-8 8" stroke="#191919" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </button>
+    </div>
+    <div id="mv-chatbot-messages">
+      {% if sample_questions %}
+      <div id="mv-starter-questions" style="display:flex;flex-wrap:wrap;gap:6px;padding:8px 0;">
+        {% for q in sample_questions %}
+        <button class="mv-starter-pill" onclick="mvSendStarter(this)" data-question="{{ q }}">{{ q }}</button>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+    <div id="mv-chatbot-input-bar">
+      <textarea id="mv-chatbot-user-input" placeholder="Type your message..." rows="2"></textarea>
+      <button id="mv-chatbot-send-btn" onclick="mvSendMessage()" title="Send">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="#fff"><path d="M2 21l21-9-21-9v7l15 2-15 2z" fill="#fff"/></svg>
+      </button>
+    </div>
+    <div id="mv-feedback-modal" style="display:none;">
+      <div class="mv-feedback-backdrop"></div>
+      <div class="mv-feedback-panel">
+        <div class="mv-feedback-header">
+          <h4 style="margin:0;font-size:1rem;">Quick feedback</h4>
+          <small class="text-muted">Help us improve this chat</small>
+        </div>
+        <div id="mv-feedback-content">
+          <div style="text-align:center;margin:12px 0;">
+            <div class="mv-feedback-stars" style="font-size:1.6rem;">
+              <span class="mv-feedback-star" data-value="1">☆</span>
+              <span class="mv-feedback-star" data-value="2">☆</span>
+              <span class="mv-feedback-star" data-value="3">☆</span>
+              <span class="mv-feedback-star" data-value="4">☆</span>
+              <span class="mv-feedback-star" data-value="5">☆</span>
+            </div>
+            <div style="display:none;">
+              <input type="radio" name="rating" value="1">
+              <input type="radio" name="rating" value="2">
+              <input type="radio" name="rating" value="3">
+              <input type="radio" name="rating" value="4">
+              <input type="radio" name="rating" value="5">
+            </div>
+          </div>
+          <textarea id="mv-feedback-text" placeholder="Any suggestions? (optional)" style="width:100%;min-height:80px;padding:10px;border-radius:8px;border:1px solid #e0e0e0;resize:vertical;"></textarea>
+          <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px;">
+            <button class="mv-feedback-skip btn btn-sm btn-secondary" type="button">Skip</button>
+            <button class="mv-feedback-submit btn btn-sm btn-primary" type="button">Submit</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="mv-chatbot-trust">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="#2dce89" style="flex-shrink:0;"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/></svg>
+      <span>Private &amp; secure — your data is encrypted and never used for AI training</span>
+    </div>
+    <div class="devlop-credit">Powered by <a href="https://querysafe.ai" target="_blank" rel="noopener" style="color:#7125BE;text-decoration:none;font-weight:600;">QuerySafe</a></div>
+    <div class="mv-chatbot-note">
+      <span>
+        <b>NOTE : </b>This is AI and may make mistakes. Please check answers carefully.
+      </span>
+    </div>
+  </div>
+</div>
+<style>
+.devlop-credit{
+    font-size: 10px;
+    text-align: center;
+    padding-bottom: 2px;
+}
+#mv-chatbot-widget-root {
+  z-index: 99999;
+}
+#mv-chatbot-fab {
+  position: fixed;
+  right: 32px;
+  bottom: 32px;
+  background: #290a4e;
+  border-radius: 50%;
+  width: 56px;
+  height: 56px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: box-shadow 0.2s;
+  z-index: 99999;
+}
+
+/* Feedback modal styles (overlay only messages + input area) */
+.mv-feedback-backdrop{
+  /* cover messages + input area only (header stays visible) */
+  position:absolute;
+  top:62px; /* matches header height */
+  left:0;
+  right:0;
+  bottom:0;
+  background: rgba(0,0,0,0.32);
+  z-index:10010;
+  display:block;
+  border-radius: 0 0 10px 10px;
+}
+.mv-feedback-panel{
+  /* float above the input area, centered horizontally */
+  position:absolute;
+  left:50%;
+  bottom: 18px;
+  transform: translateX(-50%);
+  width: calc(100% - 56px);
+  max-width: 360px;
+  z-index:10011;
+  background:#fff;
+  padding:12px;
+  border-radius:10px;
+  box-shadow:0 12px 30px rgba(0,0,0,0.18);
+}
+.mv-feedback-panel .mv-feedback-star{ cursor:pointer; color:#bdbdbd; padding:0 6px; font-size:1.4rem }
+.mv-feedback-panel .mv-feedback-star.active{ color:#f5b301; }
+.mv-feedback-panel .btn{ padding:6px 10px; border-radius:6px; }
+.mv-feedback-panel .text-muted{ color:#777; }
+#mv-feedback-modal .mv-feedback-panel textarea{ box-sizing: border-box; width:100%; max-height:160px; overflow:auto; }
+
+/* buttons theme inside widget */
+.mv-feedback-panel .btn-primary{
+  background: linear-gradient(90deg,#5b25a6 0%, #3b0d74 100%);
+  color: #fff;
+  border: none;
+}
+.mv-feedback-panel .btn-primary:hover{ opacity: .95; }
+.mv-feedback-panel .btn-secondary{
+  background: none; color:#222; border:none;
+}
+.mv-feedback-panel .actions{ display:flex; gap:8px; justify-content:flex-end; margin-top:10px; }
+#mv-chatbot-fab:hover {
+  box-shadow: 0 8px 24px rgba(0,123,255,0.18);
+  background:rgb(59, 13, 116);
+}
+#mv-chatbot-modal {
+  position: fixed;
+  right: 32px;
+  bottom: 100px;
+  width: 370px;
+  max-width: 95vw;
+  height: 620px;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+  display: flex;
+  flex-direction: column;
+  z-index: 99999;
+  overflow: hidden;
+  animation: mv-chatbot-fadein 0.2s;
+  border: 1px solid rgb(196, 196, 196);
+}
+@keyframes mv-chatbot-fadein { from { opacity: 0; transform: translateY(40px);} to { opacity: 1; transform: translateY(0);} }
+#mv-chatbot-header {
+  background: #eaeaea;
+  color: #1c1c1c;
+  padding: 12px 18px 12px 14px;
+  font-size: 1.2rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #e0e0e0;
+  min-height: 60px;
+}
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.logo-icon {
+  width: 38px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+  border-radius: 50%;
+  box-shadow: 0 2px 8px rgba(0,123,255,0.07);
+}
+.logo-icon img {
+  border: 3px solid white;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  border-radius: 50%;
+  display: block;
+}
+.header-title {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.main-title {
+  font-size: 1.08rem;
+  font-weight: 700;
+  color: #222;
+  margin-bottom: 2px;
+  letter-spacing: 0.2px;
+}
+.sub-title {
+  font-size: 0.93rem;
+  color: #555;
+  font-weight: 300;
+  letter-spacing: 0.1px;
+}
+#mv-chatbot-close {
+  background: none;
+  border: none;
+  padding: 4px;
+  margin-left: 8px;
+  cursor: pointer;
+  border-radius: 50%;
+  transition: background 0.18s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+#mv-chatbot-close:hover {
+  background: #e0eaff;
+}
+#mv-chatbot-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 18px 10px 10px 10px;
+  background: #f4f4f4;
+  display: flex;
+  flex-direction: column;
+  scrollbar-width: thin;
+  scrollbar-color: #cecece #e0e0e000;
+}
+#mv-chatbot-messages::-webkit-scrollbar {
+  width: 8px;
+  border-radius: 8px;
+  background: #e0e0e0;
+}
+#mv-chatbot-messages::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #007bff 40%, #0056b3 100%);
+  border-radius: 8px;
+}
+.mv-chatbot-message {
+  margin-bottom: 15px;
+  max-width: 75%;
+  padding: 12px 16px;
+  border-radius: 16px;
+  word-wrap: break-word;
+  white-space: pre-wrap;
+  font-size: 1rem;
+  padding-bottom: 0px;
+}
+.mv-chatbot-message p{
+    margin: 0px;
+}
+.mv-chatbot-user-msg {
+  background-color: #1c1c1c;
+  color: white;
+  align-self: flex-end;
+  border-bottom-right-radius: 0;
+  text-align: right;
+}
+.mv-chatbot-bot-msg {
+  background-color: #cbcbcb;
+  align-self: flex-start;
+  border-bottom-left-radius: 0;
+}
+.mv-chatbot-source-msg {
+  font-size: 0.8em;
+  color: #666;
+  margin-top: 6px;
+}
+#mv-chatbot-input-bar {
+  display: flex;
+  background-color: white;
+  border-top: 1px solid #d3d3d3;
+  flex-direction: row;
+  border-radius: 0 0 18px 18px;
+  align-items: center;
+  padding: 10px;
+  gap: 8px;
+}
+#mv-chatbot-user-input {
+  flex: 1;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: none;
+  font-size: 1rem;
+  min-height: 44px;
+  max-height: 120px;
+  resize: vertical;
+  background: #ffffff00;
+  {% comment %} box-shadow: 0 2px 8px rgba(0, 123, 255, 0.04); {% endcomment %}
+  transition: border-color 0.2s, box-shadow 0.2s;
+  outline: none;
+  font-family: Arial, Helvetica, sans-serif;
+}
+#mv-chatbot-send-btn {
+  background-color: #2a2a2a;
+  color: white;
+  padding: 10px 14px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 500;
+  transition: background 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+#mv-chatbot-send-btn:hover {
+  background-color: #0056b3;
+}
+#mv-chatbot-send-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.mv-typing-indicator {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  font-style: italic;
+  font-size: 0.98em;
+  color:#393939;
+  padding: 8px 12px;
+  background:rgb(255, 255, 255);
+  border-radius: 12px;
+  margin: 8px 0;
+  width: fit-content;
+}
+.mv-typing-indicator .dot {
+  height: 8px;
+  width: 8px;
+  margin: 0 2px;
+  background-color:rgb(103, 103, 103);
+  border-radius: 50%;
+  display: inline-block;
+  animation: bounce 1.2s infinite both;
+}
+.mv-typing-indicator .dot:nth-child(1) { animation-delay: 0s; }
+.mv-typing-indicator .dot:nth-child(2) { animation-delay: 0.2s; }
+.mv-typing-indicator .dot:nth-child(3) { animation-delay: 0.4s; }
+@keyframes bounce {
+  0%, 80%, 100% { transform: translateY(0); }
+  40% { transform: translateY(-8px); }
+}
+.mv-chatbot-trust {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 5px 12px;
+  margin: 0;
+  font-size: 9.5px;
+  color: #2d7a4f;
+  background: #f0fdf4;
+  border-top: 1px solid #d1fae5;
+  line-height: 1.3;
+}
+.mv-chatbot-note {
+  font-size: 10px;
+  color: #888;
+  text-align: center;
+  margin: 4px 0 8px 0;
+  padding: 0 10px;
+  line-height: 1.4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+.mv-starter-pill {
+  background: #fff;
+  border: 1px solid #d4bfff;
+  color: #4a1582;
+  padding: 7px 14px;
+  border-radius: 20px;
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  line-height: 1.3;
+  text-align: left;
+}
+.mv-starter-pill:hover {
+  background: #f3eaff;
+  border-color: #7125BE;
+}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.6/dist/purify.min.js"></script>
+<script>
+let mvChatHistory = [];
+let mvChatbotOpen = false;
+let mvGreetingShown = false;
+let currentConversationId = null;
+
+function mvOpenChatbotWidget() {
+  document.getElementById('mv-chatbot-modal').style.display = 'flex';
+  mvChatbotOpen = true;
+  if (!mvGreetingShown) {
+    mvDisplayMessage('Hi I am your neighbourhood privacy focused AI Assistant, how can I help you today?', false);
+    mvGreetingShown = true;
+  }
+}
+function mvCloseChatbotWidget() {
+  document.getElementById('mv-chatbot-modal').style.display = 'none';
+  // FAB remains visible
+  mvChatbotOpen = false;
+}
+function mvToggleChatbotWidget() {
+  if (mvChatbotOpen) {
+    mvCloseChatbotWidget();
+  } else {
+    mvOpenChatbotWidget();
+  }
+}
+function mvSetInputEnabled(enabled) {
+  // Only disable/enable the send button, not the textarea
+  const btn = document.getElementById('mv-chatbot-send-btn');
+  btn.disabled = !enabled;
+}
+function mvDisplayMessage(text, isUser = false, isSource = false) {
+  const chat = document.getElementById('mv-chatbot-messages');
+  const message = document.createElement('div');
+  if (isSource) {
+    message.classList.add('mv-chatbot-source-msg');
+    message.innerHTML = DOMPurify.sanitize(marked.parse(text));
+  } else {
+    message.classList.add('mv-chatbot-message');
+    message.classList.add(isUser ? 'mv-chatbot-user-msg' : 'mv-chatbot-bot-msg');
+    if (isUser) {
+      message.textContent = text;
+    } else {
+      message.innerHTML = DOMPurify.sanitize(marked.parse(text));
+    }
+  }
+  chat.appendChild(message);
+  chat.scrollTop = chat.scrollHeight;
+}
+function mvShowTypingIndicator() {
+  const chat = document.getElementById('mv-chatbot-messages');
+  const typing = document.createElement('div');
+  typing.id = 'mv-typing-indicator';
+  typing.classList.add('mv-typing-indicator');
+  typing.innerHTML = `
+    <span class="dot"></span>
+    <span class="dot"></span>
+    <span class="dot"></span>
+    <span style="margin-left:8px;"></span>
+  `;
+  chat.appendChild(typing);
+  chat.scrollTop = chat.scrollHeight;
+}
+function mvRemoveTypingIndicator() {
+  const typing = document.getElementById('mv-typing-indicator');
+  if (typing) typing.remove();
+}
+function mvSendMessage() {
+  const input = document.getElementById('mv-chatbot-user-input');
+  const query = input.value.trim();
+  if (!query) return;
+  
+  mvDisplayMessage(query, true);
+  input.value = '';
+  mvShowTypingIndicator();
+  mvSetInputEnabled(false);
+  
+  fetch('/chat/', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ 
+      query: query,
+      chatbot_id: '{{ chatbot_id }}',
+      conversation_id: currentConversationId
+    })
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.error) {
+      throw new Error(data.error);
+    }
+    
+    // Update conversation ID if received
+    if (data.conversation_id) {
+      currentConversationId = data.conversation_id;
+      console.log('Conversation ID:', currentConversationId);
+    }
+    
+    mvRemoveTypingIndicator();
+    mvDisplayMessage(data.answer, false);
+  })
+  .catch(error => {
+    console.error('Error:', error);
+    mvRemoveTypingIndicator();
+    mvDisplayMessage('Sorry, something went wrong. Please try again.', false);
+  })
+  .finally(() => {
+    mvSetInputEnabled(true);
+  });
+}
+document.getElementById('mv-chatbot-user-input').addEventListener('keydown', function (e) {
+  const sendBtn = document.getElementById('mv-chatbot-send-btn');
+  if (e.key === 'Enter' && !e.shiftKey) {
+    if (sendBtn.disabled) {
+      e.preventDefault();
+      return; // Do nothing if send is disabled
+    }
+    e.preventDefault();
+    mvSendMessage();
+  }
+});
+</script>
+
+<script>
+// Starter question pill click handler
+function mvSendStarter(btn) {
+  var question = btn.getAttribute('data-question');
+  var input = document.getElementById('mv-chatbot-user-input');
+  input.value = question;
+  // Hide all starter pills
+  var container = document.getElementById('mv-starter-questions');
+  if (container) container.style.display = 'none';
+  mvSendMessage();
+}
+</script>
+<script>
+// Feedback / session tracking overrides (frontend only)
+(function(){
+  window.mvSessionStartTime = null;
+  window.mvUserMessageCount = 0;
+  window.mvFeedbackMinMs = 1 * 3 * 1000; // 3 seconds
+  window.mvFeedbackMinMsgs = 3;
+  window.mvFeedbackShown = false;
+
+  // Override open to set session start
+  window.mvOpenChatbotWidget = function(){
+    document.getElementById('mv-chatbot-modal').style.display = 'flex';
+    mvChatbotOpen = true;
+    if (!mvSessionStartTime) mvSessionStartTime = Date.now();
+    if (!mvGreetingShown) {
+      mvDisplayMessage('Hi I am your neighbourhood privacy focused AI Assistant, how can I help you today?', false);
+      mvGreetingShown = true;
+    }
+  }
+
+  // Close handler: show feedback modal if conditions met, otherwise close
+  window.mvCloseChatbotWidget = function(){
+    try{
+      const now = Date.now();
+      const duration = mvSessionStartTime ? (now - mvSessionStartTime) : 0;
+      if (duration >= mvFeedbackMinMs && mvUserMessageCount >= mvFeedbackMinMsgs && !mvFeedbackShown) {
+        mvShowFeedbackModal();
+        return;
+      }
+    } catch(e) { console.warn('feedback check error', e); }
+    // fallback: just close
+    document.getElementById('mv-chatbot-modal').style.display = 'none';
+    mvChatbotOpen = false;
+  }
+
+  // Ensure toggle uses the overridden open/close
+  window.mvToggleChatbotWidget = function(){
+    if (mvChatbotOpen) mvCloseChatbotWidget(); else mvOpenChatbotWidget();
+  }
+
+  // Override send to count user messages and ensure start time
+  window.mvSendMessage = function(){
+    const input = document.getElementById('mv-chatbot-user-input');
+    const query = input.value.trim();
+    if (!query) return;
+    if (!mvSessionStartTime) mvSessionStartTime = Date.now();
+    mvUserMessageCount++;
+    mvDisplayMessage(query, true);
+    input.value = '';
+    mvShowTypingIndicator();
+    mvSetInputEnabled(false);
+
+    fetch('/chat/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: query, chatbot_id: '{{ chatbot_id }}', conversation_id: currentConversationId })
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.error) throw new Error(data.error);
+      if (data.conversation_id) currentConversationId = data.conversation_id;
+      mvRemoveTypingIndicator();
+      mvDisplayMessage(data.answer, false);
+    })
+    .catch(err => {
+      console.error(err);
+      mvRemoveTypingIndicator();
+      mvDisplayMessage('Sorry, something went wrong. Please try again.', false);
+    })
+    .finally(() => mvSetInputEnabled(true));
+  }
+
+  // Feedback modal controls
+  window.mvShowFeedbackModal = function(){
+    const m = document.getElementById('mv-feedback-modal');
+    if (!m) return; m.style.display = 'block';
+  }
+  window.mvHideFeedbackModal = function(){
+    const m = document.getElementById('mv-feedback-modal'); if (!m) return; m.style.display = 'none';
+    // mark shown so we don't show again immediately
+    mvFeedbackShown = true;
+    // then actually close the widget
+    document.getElementById('mv-chatbot-modal').style.display = 'none';
+    mvChatbotOpen = false;
+  }
+
+  // Star click & modal button handling
+  document.addEventListener('click', function(e){
+    // star
+    if (e.target && e.target.classList && e.target.classList.contains('mv-feedback-star')){
+      const val = parseInt(e.target.getAttribute('data-value') || '0');
+      document.querySelectorAll('.mv-feedback-star').forEach(s => s.classList.remove('active'));
+      for (let i=1;i<=val;i++){
+        const s = document.querySelector('.mv-feedback-star[data-value="'+i+'"]'); if (s) s.classList.add('active');
+      }
+      const radio = document.querySelector('#mv-feedback-modal input[name="rating"][value="'+val+'"]'); if (radio) radio.checked = true;
+    }
+
+    // skip
+    if (e.target && e.target.classList && e.target.classList.contains('mv-feedback-skip')){
+      mvHideFeedbackModal();
+    }
+
+    // submit
+    if (e.target && e.target.classList && e.target.classList.contains('mv-feedback-submit')){
+      const ratingEl = document.querySelector('#mv-feedback-modal input[name="rating"]:checked');
+      const rating = ratingEl ? parseInt(ratingEl.value) : 0;
+      const text = document.getElementById('mv-feedback-text').value || '';
+
+      // show local thank you UI
+      const content = document.getElementById('mv-feedback-content');
+      content.innerHTML = '<div style="padding:18px;text-align:center;"><h4 style="margin:0 0 6px;">Thanks for your feedback!</h4><p style="margin:0;color:#666;font-size:0.95rem;">We appreciate the time you took to help us improve.</p></div>';
+      mvFeedbackShown = true;
+
+      // Send to server if conversation id exists
+      if (typeof currentConversationId !== 'undefined' && currentConversationId) {
+        fetch('/chat/feedback/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ conversation_id: currentConversationId, rating: rating, description: text })
+        })
+        .then(res => res.json())
+        .then(data => {
+          if (data && data.success) {
+            console.log('Feedback submitted', data);
+          } else {
+            console.warn('Feedback submission error', data);
+          }
+        })
+        .catch(err => {
+          console.error('Feedback submit failed', err);
+        });
+      } else {
+        console.warn('No conversation id available; feedback not sent to server.');
+      }
+
+      setTimeout(()=>{ mvHideFeedbackModal(); }, 1000);
+    }
+  });
+
+})();
+</script>

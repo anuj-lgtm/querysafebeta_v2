@@ -1,0 +1,57 @@
+# ── Environment & Secrets ──
+.env
+.env.*
+*.pem
+*.key
+
+# ── Python ──
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+*.egg
+
+# ── Virtual Environment ──
+venv/
+venn/
+.venv/
+env/
+
+# ── Database ──
+db.sqlite3
+db.sqlite3-journal
+db.sqlite3.bak
+server-db.sqlite3
+
+# ── User Data (persistent storage, not in repo) ──
+documents/
+media/
+
+# ── IDE ──
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# ── Claude Code ──
+.claude/
+
+# ── Large / Generated Files ──
+*.pdf
+*.zip
+*.tar.gz
+*.rar
+
+# ── OS Files ──
+.DS_Store
+Thumbs.db
+desktop.ini
+nul
+
+# ── Django ──
+staticfiles/
+*.log

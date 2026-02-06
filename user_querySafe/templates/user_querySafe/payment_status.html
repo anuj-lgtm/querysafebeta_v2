@@ -1,0 +1,210 @@
+
+{% extends 'user_querySafe/include/base.html' %}
+{% load static %}
+
+{% block title %}Payment Status{% endblock %}
+
+{% block content %}
+	<style>
+		.ps-card { border-radius: .75rem; box-shadow: 0 6px 20px rgba(22, 28, 45, .06); overflow: hidden; }
+		.ps-hero { background: linear-gradient(90deg,#0f172a,#0b1324); color: #fff; border-radius: .75rem; padding: 1.25rem; }
+		.ps-badge { font-size: .8rem; padding: .35rem .6rem; border-radius: .5rem; }
+		.ps-icon { width:56px; height:56px; display:inline-flex; align-items:center; justify-content:center; border-radius:12px; font-size:28px; }
+		.ps-success { background: linear-gradient(135deg,#12b886,#38d9a9); color:#042217; }
+		.ps-failed { background: linear-gradient(135deg,#ff6b6b,#ff8787); color:#3a0b0b; }
+		.ps-muted { color: #6b7280; }
+		.ps-card:hover { transform: translateY(-4px); transition: .18s ease; }
+		.ps-glow { filter: drop-shadow(0 8px 24px rgba(99,102,241,.12)); }
+		.copy-btn { cursor:pointer; }
+			.timeline-step { position: relative; padding-left: 3rem; margin-bottom: .6rem; padding-top: .5rem; padding-bottom: .5rem; border-radius: .5rem; background: #fbfdff; }
+			.timeline-step::before { content: ''; position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); width: 12px; height: 12px; border-radius: 50%; background: #e6edf3; }
+			.timeline-step.completed::before { background: linear-gradient(135deg,#12b886,#38d9a9); box-shadow: 0 4px 10px rgba(18,184,134,.18); }
+		.small-muted { font-size: .85rem; color:#6b7280; }
+	</style>
+
+	<div class="container py-2">
+		<div class="row mb-4">
+			<div class="col-12">
+				<div class="d-flex align-items-center justify-content-between mb-3">
+					<div>
+						<h2 class="mb-1">Payment Status</h2>
+						<p class="small-muted mb-0">A detailed summary of your transaction and system processing.</p>
+					</div>
+					<div class="text-end">
+						{% if result.updated and result.order and result.order.status == 'completed' %}
+							<span class="ps-badge bg-success text-white">Payment Verified</span>
+						{% elif result.updated and result.order %}
+							<span class="ps-badge bg-danger text-white">Payment {{ result.order.status|title }}</span>
+						{% else %}
+							<span class="ps-badge bg-info text-white">Callback Received</span>
+						{% endif %}
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<div class="row g-4">
+			<div class="col-lg-8">
+				<div class="card ps-card mb-4">
+					<div class="card-body d-flex gap-3 align-items-center">
+						<div class="ps-icon ps-glow {% if result.updated and result.order and result.order.status == 'completed' %}ps-success{% else %}ps-failed{% endif %}">
+							<i class="material-symbols-rounded">{% if result.updated and result.order and result.order.status == 'completed' %}check_circle{% else %}report_problem{% endif %}</i>
+						</div>
+						<div class="flex-grow-1">
+							<h5 class="mb-1">{% if result.updated and result.order and result.order.status == 'completed' %}Payment Successful{% elif result.updated and result.order %}Payment {{ result.order.status|title }}{% else %}Callback Received{% endif %}</h5>
+							<div class="d-flex align-items-center gap-3 mt-2">
+								<p class="mb-1 small-muted">Order <strong>{{ order_obj.order_id|default:result.order.order_id }}</strong> &middot; {% if plan_obj %}{{ plan_obj.plan_name }}{% else %}Plan details unavailable{% endif %}</p>
+                                <div class="ms-auto small-muted">Payment on: {{ payment_info.created_at|default:order_obj.created_at|default:'-' }}</div>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<div class="row">
+					<div class="col-md-6">
+						<div class="card ps-card mb-3">
+							<div class="card-body">
+								<h6 class="mb-2">Plan Details</h6>
+								{% if plan_obj %}
+									<p class="mb-1"><strong class="me-2">{{ plan_obj.plan_name }}</strong></p>
+									<p class="small-muted mb-1">Duration: <strong>{{ plan_obj.days }} days</strong></p>
+									<p class="small-muted mb-0">Chatbots: <strong>{{ plan_obj.no_of_bot }}</strong></p>
+                                    <p class="small-muted mb-0">Queries: <strong>{{ plan_obj.no_of_query }}</strong></p>
+                                    <p class="small-muted mb-0">Files: <strong>{{ plan_obj.no_of_file }}</strong></p>
+								{% else %}
+									<p class="text-muted small">No plan information available.</p>
+								{% endif %}
+							</div>
+						</div>
+					</div>
+
+					<div class="col-md-6">
+						<div class="card ps-card mb-3">
+							<div class="card-body">
+								<h6 class="mb-2">Billing Details</h6>
+								{% if billing %}
+									<p class="mb-1"><strong>{{ billing.full_name }}</strong></p>
+									<p class="small-muted mb-1">Email : <strong>{{ billing.email }}</strong></p>
+                                    <p class="small-muted mb-1">Phone : <strong>{{ billing.phone }}</strong></p>
+									<p class="small-muted mb-0">Address 1 : <strong>{{ billing.address }}</strong></p>
+									<p class="small-muted mb-0"><strong>{{ billing.city }}</strong>, <strong>{{ billing.state }}</strong> · <strong>{{ billing.pin }}</strong></p>
+								{% else %}
+									<p class="text-muted small">No billing information available.</p>
+								{% endif %}
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<div class="card ps-card mb-3">
+					<div class="card-body">
+						<h6 class="mb-3">Payment Details</h6>
+						<div class="d-flex flex-column flex-sm-row align-items-sm-center gap-3 mb-2">
+							<div class="flex-grow-1">
+								<p class="mb-1">Order ID : <strong class="text-capitalize">{{ order_obj.order_id }}</strong></p>
+                                <p class="mb-1">Payment ID : <strong class="text-capitalize">{{ payment_info.payment_id|default:order_obj.razorpay_payment_id|default:'-' }}</strong></p>
+								{% with status=result.order.status|default:order_obj.status|default:'-' %}
+								<p class="mt-2 mb-0">Status :
+									{% if status == 'completed' %}
+										<span class="badge bg-success">{{ status|capfirst }}</span>
+									{% elif status == 'failed' %}
+										<span class="badge bg-danger">{{ status|capfirst }}</span>
+									{% elif status == 'pending' %}
+										<span class="badge bg-warning text-dark">{{ status|capfirst }}</span>
+									{% else %}
+										<span class="badge bg-secondary">{{ status|capfirst }}</span>
+									{% endif %}
+								</p>
+								{% endwith %}
+								<p class="mt-2 mb-0">Time : <strong class="text-capitalize">{{ order_obj.created_at }}</strong></p>
+							</div>
+							<div class="text-sm-end ms-sm-auto">
+								{% if payment_info.amount %}
+									<p class="mb-1 small-muted">Amount</p>
+									<p class="mb-0"><strong>{% if plan_obj and plan_obj.currency == 'INR' %}₹{% endif %}{{ payment_info.amount }}</strong></p>
+								{% elif order_obj and order_obj.amount %}
+									<p class="mb-1 small-muted">Amount</p>
+									<p class="mb-0"><strong>{% if plan_obj and plan_obj.currency == 'INR' %}₹{% endif %}{{ order_obj.amount }}</strong></p>
+								{% endif %}
+							</div>
+						</div>
+
+						{% if payment_info.error_code %}
+							<p>Error : <span class="alert text-danger py-0" role="alert"> {{ payment_info.error_code }}</span></p>
+                            <p>Reason : <span class="alert text-danger py-0" role="alert"> {{ payment_info.error_description }}</span></p>
+						{% endif %}
+
+					</div>
+				</div>
+			</div>
+
+			<div class="col-lg-4">
+				<div class="card ps-card mb-3">
+					<div class="card-body text-center">
+						<div class="mb-3">
+							<div class="ps-icon mx-auto mb-2 {% if result.updated and result.order and result.order.status == 'completed' %}ps-success{% else %}ps-failed{% endif %}">
+								<i class="material-symbols-rounded">{% if result.updated and result.order and result.order.status == 'completed' %}workspace_premium{% else %}error_outline{% endif %}</i>
+							</div>
+						</div>
+						<h6 class="mb-1">Order Summary</h6>
+						{% if order_obj %}
+							<p class="mb-1"><strong>{{ order_obj.order_id }}</strong></p>
+							{% with os=order_obj.status|default:'-' %}
+							<p class="mb-1">Status: <span class="badge {% if os == 'completed' %}bg-success{% elif os == 'failed' %}bg-danger{% elif os == 'pending' %}bg-warning text-dark{% else %}bg-secondary{% endif %}">{{ os|capfirst }}</span></p>
+							{% endwith %}
+							<p class="mb-1 small-muted">Payment ID: <strong>{{ order_obj.razorpay_payment_id|default:'-' }}</strong></p>
+							<p class="mb-1 small-muted">Amount: <strong>{% if plan_obj and plan_obj.currency == 'INR' %}₹{% endif %}{{ order_obj.amount }}</strong></p>
+							<p class="mb-1 small-muted">Payment on: <strong>{{ order_obj.created_at }}</strong></p>
+						{% else %}
+							<p class="text-muted small">No matching order found.</p>
+						{% endif %}
+
+						<div class="d-grid gap-2 mt-3">
+							<a href="{% url 'order_history' %}" class="btn btn-outline-primary btn-sm">View Orders</a>
+						</div>
+					</div>
+				</div>
+				<div class="card ps-card mb-3">
+					<div class="card-body small-muted">
+						<h6 class="mb-2">Need Help?</h6>
+						<p class="mb-2">Email: <a href="mailto:support@querysafe.in">support@querysafe.in</a></p>
+                        <p class="mb-0">Help & Support : <a href="{% url 'help_support' %}">Visit</a></p>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<script>
+		function copyToClipboard(selector) {
+			try {
+				const el = document.querySelector(selector);
+				if (!el) return;
+				const text = el.innerText.trim();
+				if (!text || text === '-') return;
+				navigator.clipboard.writeText(text);
+				const btn = (event && event.target && event.target.closest('button')) || this;
+				if (!btn) return;
+				const orig = btn.innerHTML;
+				btn.innerHTML = '<i class="material-symbols-rounded">check</i>';
+				setTimeout(()=> btn.innerHTML = orig, 1400);
+			} catch(e) { console.warn('copy failed', e); }
+		}
+
+		document.addEventListener('DOMContentLoaded', function(){
+			// If payment id missing on server side, try to extract from raw payload
+			const paymentEl = document.getElementById('paymentId');
+			if (paymentEl && (paymentEl.innerText.trim() === '-' || paymentEl.innerText.trim() === '')) {
+				const rawEl = document.getElementById('rawPayloadText');
+				const raw = rawEl ? rawEl.innerText || '' : '';
+				if (raw) {
+					let m = raw.match(/pay_[A-Za-z0-9_-]+/);
+					if (!m) {
+						try { m = decodeURIComponent(raw).match(/pay_[A-Za-z0-9_-]+/); } catch(e) { /* ignore */ }
+					}
+					if (m) paymentEl.innerText = m[0];
+				}
+			}
+		});
+	</script>
+{% endblock %}

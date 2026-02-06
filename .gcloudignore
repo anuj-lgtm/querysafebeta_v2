@@ -1,0 +1,13 @@
+.git
+.gitignore
+__pycache__
+*.pyc
+db.sqlite3
+venv/
+.env
+documents/files_uploaded/
+documents/files_images/
+documents/files_captions/
+documents/files_chunks/
+documents/vector_index/
+documents/chunk-metadata/
