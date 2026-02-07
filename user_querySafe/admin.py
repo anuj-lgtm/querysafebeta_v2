@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.utils.html import format_html
-from .models import User, Chatbot, ChatbotDocument, ChatbotURL, Conversation, Message, HelpSupportRequest, ChatbotFeedback, EmailOTP, Activity, QSPlan, QSCheckout, QSBillingDetails, QSOrder, QSPlanAllot
+from .models import User, Chatbot, ChatbotDocument, ChatbotURL, Conversation, Message, HelpSupportRequest, ChatbotFeedback, EmailOTP, Activity, QSPlan, QSCheckout, QSBillingDetails, QSOrder, QSPlanAllot, VisionAPIUsage
 
 @admin.register(User)
 class UserAdmin(admin.ModelAdmin):
@@ -171,3 +171,11 @@ class ChatbotURLAdmin(admin.ModelAdmin):
     def url_truncated(self, obj):
         return obj.url[:80] + ('...' if len(obj.url) > 80 else '')
     url_truncated.short_description = 'URL'
+
+
+@admin.register(VisionAPIUsage)
+class VisionAPIUsageAdmin(admin.ModelAdmin):
+    list_display = ('chatbot', 'call_count', 'call_type', 'created_at')
+    list_filter = ('call_type', 'created_at')
+    search_fields = ('chatbot__chatbot_id', 'chatbot__name')
+    readonly_fields = ('created_at',)

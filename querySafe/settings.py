@@ -21,10 +21,10 @@ DEBUG = os.getenv('DEBUG', 'False') == 'True'
 PROJECT_NAME = os.getenv('PROJECT_NAME', 'QuerySafe')
 
 # Allow specific hosts
-ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '127.0.0.1,localhost,console.querysafe.in,.run.app,0.0.0.0').split(',')
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '127.0.0.1,localhost,console.querysafe.in,.querysafe.ai,.run.app,0.0.0.0').split(',')
 
 # CSRF Trusted Origins
-CSRF_TRUSTED_ORIGINS = os.getenv('CSRF_TRUSTED_ORIGINS', 'https://console.querysafe.in,https://*.run.app,http://localhost,https://localhost,http://127.0.0.1,https://127.0.0.1,http://0.0.0.0,https://0.0.0.0').split(',')
+CSRF_TRUSTED_ORIGINS = os.getenv('CSRF_TRUSTED_ORIGINS', 'https://console.querysafe.in,https://*.querysafe.ai,https://*.run.app,http://localhost,https://localhost,http://127.0.0.1,https://127.0.0.1,http://0.0.0.0,https://0.0.0.0').split(',')
 
 # Security settings for Cloud Run
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
@@ -113,13 +113,26 @@ TEMPLATES = [
 WSGI_APPLICATION = 'querySafe.wsgi.application'
 
 # Database
+# Production uses Cloud SQL PostgreSQL; local dev uses SQLite
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': os.path.join(DATA_DIR, os.getenv("DATABASE_NAME", "db.sqlite3")),
+if ENVIRONMENT == "production":
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': os.getenv('DB_NAME', 'querysafe'),
+            'USER': os.getenv('DB_USER', 'querysafe'),
+            'PASSWORD': os.getenv('DB_PASSWORD', ''),
+            'HOST': os.getenv('DB_HOST', '/cloudsql/querysafe-dev:asia-south1:querysafe-db'),
+            'PORT': os.getenv('DB_PORT', '5432'),
+        }
     }
-}
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': os.path.join(DATA_DIR, os.getenv("DATABASE_NAME", "db.sqlite3")),
+        }
+    }
 
 AUTH_PASSWORD_VALIDATORS = [
     {

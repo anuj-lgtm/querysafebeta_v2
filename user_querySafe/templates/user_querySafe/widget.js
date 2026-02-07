@@ -29,7 +29,9 @@
         const config = {
             chatbotName: '{{ chatbot_name|escapejs }}',
             chatbotLogo: '{{ chatbot_logo|escapejs }}',
-            baseUrl: '{{ base_url|escapejs }}'
+            baseUrl: '{{ base_url|escapejs }}',
+            collectEmail: {{ collect_email|yesno:"true,false" }},
+            collectEmailMessage: '{{ collect_email_message|escapejs }}'
         };
 
         // Inject CSS styles
@@ -556,9 +558,54 @@
             waiting: false,
             sessionStartTime: null,
             userMessageCount: 0,
+            visitorEmail: null,
+            emailCollected: false,
             feedbackMinMs: 2 * 3 * 1000, // 2 minutes
             feedbackMinMsgs: 3,
             feedbackShown: false,
+
+            showEmailGate: function() {
+                if (!this.config.collectEmail || this.emailCollected) return;
+                const msgs = document.getElementById('mv-chatbot-messages');
+                const inputBar = document.getElementById('mv-chatbot-input-bar');
+                if (!msgs || !inputBar) return;
+
+                // Hide chat input, show email form
+                inputBar.style.display = 'none';
+                const emailHtml = `
+                    <div id="mv-email-gate" style="padding:16px;text-align:center;">
+                        <p style="margin:0 0 10px;font-size:0.95rem;color:#333;">${this.config.collectEmailMessage || 'Please enter your email to get started.'}</p>
+                        <input type="email" id="mv-email-input" placeholder="you@example.com"
+                            style="width:100%;padding:10px 14px;border:1px solid #ddd;border-radius:8px;font-size:0.95rem;outline:none;margin-bottom:10px;">
+                        <button id="mv-email-submit"
+                            style="width:100%;padding:10px;background:#7125BE;color:#fff;border:none;border-radius:8px;font-size:0.95rem;cursor:pointer;font-weight:600;">
+                            Start Chat
+                        </button>
+                        <p style="margin:8px 0 0;font-size:0.75rem;color:#999;">Your email is kept private and secure.</p>
+                    </div>`;
+                msgs.insertAdjacentHTML('beforeend', emailHtml);
+
+                const self = this;
+                document.getElementById('mv-email-submit').addEventListener('click', function() {
+                    const emailInput = document.getElementById('mv-email-input');
+                    const email = emailInput.value.trim();
+                    if (!email || !email.includes('@')) {
+                        emailInput.style.borderColor = '#e53e3e';
+                        return;
+                    }
+                    self.visitorEmail = email;
+                    self.emailCollected = true;
+                    document.getElementById('mv-email-gate').remove();
+                    inputBar.style.display = '';
+                    document.getElementById('mv-chatbot-user-input').focus();
+                });
+                document.getElementById('mv-email-input').addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        document.getElementById('mv-email-submit').click();
+                    }
+                });
+            },
 
             init: function() {
                 const container = document.createElement('div');
@@ -690,8 +737,11 @@
                     if (!this.greetingSent) {
                         this.displayMessage('Hi! How can I help you today?', false);
                         this.greetingSent = true;
+                        this.showEmailGate();
                     }
-                    document.getElementById('mv-chatbot-user-input').focus();
+                    if (!this.config.collectEmail || this.emailCollected) {
+                        document.getElementById('mv-chatbot-user-input').focus();
+                    }
                 }
             },
 
@@ -795,7 +845,8 @@
                     body: JSON.stringify({
                         query: message,
                         chatbot_id: '{{ chatbot.chatbot_id }}',
-                        conversation_id: this.conversationId
+                        conversation_id: this.conversationId,
+                        visitor_email: this.visitorEmail || ''
                     })
                 })
                 .then(response => {

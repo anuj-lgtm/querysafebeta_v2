@@ -1,7 +1,7 @@
 # QuerySafe — Complete Product Documentation
 
-> **Version:** 1.0
-> **Last Updated:** February 2026
+> **Version:** 2.0
+> **Last Updated:** February 2026 (Post-PostgreSQL Migration)
 > **Prepared by:** Metric Vibes
 > **Classification:** Internal + Sales
 
@@ -33,7 +33,7 @@
 5. [Pricing & Plans](#5-pricing--plans)
    - 5.1 [Plan Structure](#51-plan-structure)
    - 5.2 [Plan Tiers](#52-plan-tiers)
-   - 5.3 [Enterprise & On-Premise](#53-enterprise--on-premise-option)
+   - 5.3 [Custom / Agency](#53-custom--agency-option)
    - 5.4 [Discounts & Trials](#54-discounts--trials)
    - 5.5 [Billing Flow](#55-billing-flow)
 6. [Technical Architecture](#6-technical-architecture)
@@ -65,8 +65,9 @@ In an era where businesses need AI-powered customer support but fear their sensi
 | **Multi-Source Training** | Train chatbots on PDFs, Word docs, images, text files, website URLs, and sitemaps |
 | **One-Line Embed** | Add an AI chatbot to any website with a single `<script>` tag |
 | **Full Control** | Custom bot personality, starter questions, branding, and retraining on demand |
-| **Actionable Analytics** | Track conversations, satisfaction ratings, peak hours, and top questions |
-| **Enterprise Ready** | On-premise deployment, SSO, custom implementation, dedicated support |
+| **Lead Capture** | Optional email collection from website visitors before first chat interaction |
+| **Actionable Analytics** | Track conversations, satisfaction ratings, peak hours, top questions, and leads collected |
+| **SMB & Agency Ready** | White-label branding, higher limits, priority support, API access |
 
 ### Target Audience
 
@@ -74,7 +75,7 @@ In an era where businesses need AI-powered customer support but fear their sensi
 - **SaaS Companies** wanting to offer in-app help powered by their documentation
 - **Healthcare & Legal Firms** requiring strict data privacy compliance
 - **E-commerce** businesses needing 24/7 product Q&A on their websites
-- **Enterprises** seeking on-premise AI chatbot solutions with full data sovereignty
+- **Agencies** seeking white-label AI chatbot solutions with custom branding
 
 ---
 
@@ -91,29 +92,33 @@ User's Website                    QuerySafe Platform
 | <script> Widget --+--HTTPS--->|  Django 5.2 Backend                      |
 |                   |            |    +---> Vertex AI (Gemini 2.0 Flash)    |
 +-------------------+            |    +---> FAISS Vector Index              |
-                                 |    +---> Google Cloud Storage            |
+                                 |    +---> Google Cloud Storage (files)    |
 QuerySafe Console                |    +---> SentenceTransformer Embeddings  |
-+-------------------+            |                                          |
-| console.querysafe +--HTTPS--->|  SQLite3 Database (Persistent Volume)    |
-| .in               |            |  WhiteNoise Static File Serving          |
-+-------------------+            +------------------------------------------+
++-------------------+            |    +---> Cloud SQL PostgreSQL 15         |
+| console2.query    +--HTTPS--->|                                          |
+| safe.ai           |            |  Gunicorn (2 workers, 300s timeout)      |
++-------------------+            |  WhiteNoise Static File Serving          |
+                                 +------------------------------------------+
 ```
 
 ### Key URLs
 
 | Resource | URL |
 |----------|-----|
-| **Console (App)** | [console.querysafe.in](https://console.querysafe.in) |
+| **Console (App)** | [console2.querysafe.ai](https://console2.querysafe.ai) |
+| **Console (Cloud Run)** | [querysafe-v2-371440857764.asia-south1.run.app](https://querysafe-v2-371440857764.asia-south1.run.app) |
 | **Marketing Website** | [querysafe.ai](https://querysafe.ai) |
 | **Documentation** | [docs.querysafe.in](https://docs.querysafe.in) |
 | **Privacy Policy** | [querysafe.ai/privacy](https://querysafe.ai/privacy) |
 
 ### Infrastructure Highlights
 
-- **Compute:** Google Cloud Run — serverless, auto-scaling, zero cold-start overhead
+- **Compute:** Google Cloud Run — serverless, auto-scaling, CPU boost on startup, 2 Gunicorn workers with 300s timeout
 - **AI Inference:** Google Vertex AI — Gemini 2.0 Flash for both chat and vision processing
-- **Storage:** Google Cloud Storage — mounted as persistent volume for documents, indexes, and database
-- **Deployment:** Containerized Docker deployment with Gunicorn WSGI server
+- **Database:** Cloud SQL PostgreSQL 15 (db-f1-micro) — production-grade relational database with Cloud SQL Auth Proxy
+- **File Storage:** Google Cloud Storage (GCS FUSE) — mounted as persistent volume for documents, FAISS indexes, and media files
+- **Embeddings:** SentenceTransformer model (`all-MiniLM-L6-v2`) pre-downloaded into Docker image (~90MB) for fast cold starts
+- **Deployment:** Containerized Docker deployment with Gunicorn WSGI server (2 workers, 300s timeout)
 - **Static Assets:** WhiteNoise middleware for compressed, cache-friendly static file serving
 - **Security:** HTTPS everywhere, CSRF protection, secure cookies, `X-Frame-Options` headers
 
@@ -284,16 +289,27 @@ Users can train their chatbot on website content in addition to documents:
 **Trust strip** appears above the upload area:
 > "Your data is safe: AES-256 encrypted | Never used for LLM training | Isolated workspace"
 
+#### Lead Capture (Optional)
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| **Collect Visitor Email** | Toggle (checkbox) | No | When enabled, visitors must enter their email before chatting |
+| **Email Message** | Text | No | Custom message shown when asking for email (default: "Please enter your email to get started.") |
+
+When lead capture is enabled, the chat widget displays an email input form before the visitor can send their first message. Collected emails are stored on the `Conversation` model and visible in the Analytics dashboard.
+
 #### Submission
 
 On form submission:
 1. Chatbot record created in database with status `training`
 2. Documents saved to disk with `{chatbot_id}_` prefix
 3. URL records created as `ChatbotURL` entries
-4. Background RAG pipeline triggered (threaded)
-5. User redirected to "My Chatbots" page
-6. Activity logged: "Created chatbot: {name}"
-7. Email notification sent when training completes
+4. **Synchronous RAG pipeline execution** — training runs within the HTTP request so Cloud Run keeps CPU allocated
+5. On success: user sees success message and is redirected to "My Chatbots" page
+6. On failure: user sees warning message with option to retrain from Edit page
+7. Activity logged: "Created chatbot: {name}"
+
+> **Note:** Training is synchronous (not background-threaded) to prevent Cloud Run CPU throttling from stalling the pipeline. Gunicorn runs 2 workers with 300s timeout to handle concurrent requests during training.
 
 ---
 
@@ -349,10 +365,10 @@ Every chatbot can be fully edited after creation — settings, documents, URLs, 
 
 On retrain:
 1. Status set to `training`
-2. Pipeline runs in background thread
-3. `last_trained_at` updated on completion
-4. Activity logged
-5. Email notification sent
+2. Pipeline runs **synchronously** within the HTTP request (Cloud Run keeps CPU allocated)
+3. On success: `last_trained_at` updated, success message shown
+4. On failure: error message shown, user can retry
+5. Activity logged
 
 ---
 
@@ -446,11 +462,20 @@ Crawling parameters:
 - Activity logged in `Activity` model
 - Email notification sent to user
 
-#### Concurrency & Safety
+#### Execution Model & Safety
 
-- Each pipeline run executes in a **daemon thread**
+- Pipeline runs **synchronously** within the HTTP request — this ensures Cloud Run keeps CPU allocated throughout training
+- Gunicorn runs 2 workers with 300s timeout, so other requests can be served while one worker handles training
 - **Per-chatbot locking** prevents duplicate concurrent runs
 - If a pipeline is already running for a chatbot, new requests are safely rejected
+- SentenceTransformer model is **pre-downloaded into the Docker image** (~90MB) to avoid slow runtime downloads
+- Cloud Run `--cpu-boost` flag provides full CPU during container startup for faster model loading
+
+#### Vision API Cost Tracking
+
+- Each Gemini Vision API call during training is tracked in the `VisionAPIUsage` model
+- Records: chatbot ID, number of images processed, call type (training/chat), timestamp
+- Enables cost monitoring and ensures pricing covers Vision API expenses
 
 #### Output Files (Per Chatbot)
 
@@ -472,7 +497,7 @@ The chat widget is QuerySafe's customer-facing product — a lightweight, embedd
 Website owners add a single script tag to their HTML:
 
 ```html
-<script src="https://console.querysafe.in/widget/{chatbot_id}/querySafe.js"></script>
+<script src="https://console2.querysafe.ai/widget/{chatbot_id}/querySafe.js"></script>
 ```
 
 This loads a self-contained IIFE (Immediately Invoked Function Expression) that:
@@ -519,6 +544,19 @@ This loads a self-contained IIFE (Immediately Invoked Function Expression) that:
 - Animated three-dot indicator while bot is processing
 - Matches bot message styling
 
+#### Lead Capture (Email Gate)
+
+When the chatbot owner enables "Collect Visitor Email" in chatbot settings:
+
+1. On first widget open, an email input form appears before the chat input
+2. Visitor must enter a valid email address to start chatting
+3. Custom message is displayed (configurable per chatbot, default: "Please enter your email to get started.")
+4. Email is validated client-side before submission
+5. Email is sent with the first chat request and saved to the `Conversation` model
+6. Collected leads are visible in the Analytics dashboard with counts and recent emails
+
+If lead capture is disabled, the widget works normally without any email gate.
+
 #### Advanced Features
 
 | Feature | Implementation |
@@ -528,6 +566,7 @@ This loads a self-contained IIFE (Immediately Invoked Function Expression) that:
 | **Conversation Tracking** | Unique conversation_id maintained across messages in a session |
 | **Session Awareness** | Tracks session start time and message count |
 | **Rate Limiting** | 10 messages per 60-second window |
+| **Lead Capture** | Optional email collection before first message (configurable per chatbot) |
 
 #### Feedback System
 
@@ -623,7 +662,7 @@ A comprehensive analytics system that helps chatbot owners understand usage patt
 | **Chatbot** | Dropdown of all user's chatbots + "All Chatbots" | All Chatbots |
 | **Date Range** | 7 days, 30 days, 90 days, All time | 7 days |
 
-#### Summary Cards (4 Cards)
+#### Summary Cards (4 + 1 Cards)
 
 | Card | Main Metric | Sub-metric | Icon |
 |------|------------|------------|------|
@@ -631,6 +670,9 @@ A comprehensive analytics system that helps chatbot owners understand usage patt
 | **Messages** | Total count | User + Bot breakdown | message (cyan) |
 | **Satisfaction** | Average rating /5 | Total feedback count | star (orange) |
 | **Response Rate** | Percentage | Avg messages per conversation | speed (green) |
+| **Leads Collected** | Total email count | Recent 10 emails displayed as badges | mail (dark) |
+
+> The "Leads Collected" card only appears when at least one visitor email has been captured. It shows the total count and the 10 most recent visitor emails as badges.
 
 #### Charts (Powered by Chart.js)
 
@@ -680,7 +722,7 @@ QuerySafe uses a flexible, admin-configurable plan system with Razorpay payment 
   - CTA button ("Start Free Trial" or "Select Plan")
 - **"Most Popular"** ribbon on recommended plan
 - **"Current Plan"** badge and disabled button on active plan
-- **Enterprise/On-Premise** card with "Contact Sales" CTA
+- **Custom / Agency** card with "Contact Sales" CTA
 
 **Feature Comparison per Plan:**
 - Messages per month
@@ -835,7 +877,7 @@ This snapshot approach means even if the admin changes plan limits later, existi
 
 QuerySafe includes a full Django admin panel for platform administrators.
 
-#### Registered Models (15 Total)
+#### Registered Models (16 Total)
 
 | Model | Admin Capabilities |
 |-------|-------------------|
@@ -854,6 +896,7 @@ QuerySafe includes a full Django admin panel for platform administrators.
 | **QSBillingDetails** | View billing information |
 | **QSOrder** | View/manage orders, filter by status |
 | **QSPlanAllot** | View plan allocations, check expiry dates |
+| **VisionAPIUsage** | View Vision API call tracking per chatbot |
 
 ---
 
@@ -941,11 +984,11 @@ QuerySafe runs entirely on Google Cloud Platform, leveraging Google's world-clas
 
 | Layer | Google Cloud Service | Security Benefit |
 |-------|---------------------|-----------------|
-| **Compute** | Cloud Run | Serverless, ephemeral containers. No persistent server state. Auto-scales to zero. |
-| **Storage** | Cloud Storage (Mounted) | AES-256 encryption, redundant storage, access control via IAM |
+| **Compute** | Cloud Run | Serverless, ephemeral containers. No persistent server state. Auto-scales to zero. CPU boost on startup. |
+| **Database** | Cloud SQL (PostgreSQL 15) | Managed relational database with automatic backups, encryption at rest, IAM access control |
+| **File Storage** | Cloud Storage (GCS FUSE) | AES-256 encryption, redundant storage, access control via IAM. Used for documents, FAISS indexes, and media. |
 | **AI** | Vertex AI (Gemini) | Enterprise data isolation, no training on customer data |
 | **Networking** | Google Cloud Load Balancer | DDoS protection, SSL termination, global edge network |
-| **Database** | Persistent Volume (SQLite3) | Encrypted at rest on attached storage |
 
 **Key point:** There are **zero third-party AI providers** in the stack. All AI processing happens through Google Vertex AI, which means your data never leaves Google's secure infrastructure.
 
@@ -1027,28 +1070,28 @@ Plans are created and managed through the Django admin panel. The typical tier s
 - **Limits:** Higher chatbot count, query volume, file sizes
 - **Features:** Everything in Starter + remove branding + priority support
 
-#### Enterprise / On-Premise
+#### Custom / Agency
 
 - **Price:** Custom (Contact Sales)
 - **Features:**
-  - Custom setup on client's own server
-  - User-level tokenization with SSO
-  - 100% privacy guarantee (data never leaves client infrastructure)
-  - Full implementation customization
-  - Dedicated success manager
-  - Custom SLAs and support terms
+  - Higher limits (files, queries, bots)
+  - White-label branding
+  - 100% Privacy Guarantee
+  - Priority Support
+  - API Access
+  - Gemini 2.0 Flash (Smart)
 
-### 5.3 Enterprise & On-Premise Option
+### 5.3 Custom / Agency Option
 
-For organizations with strict data sovereignty requirements, QuerySafe offers an on-premise deployment:
+For agencies, resellers, and businesses needing higher limits or white-label solutions:
 
 | Feature | Description |
 |---------|-------------|
-| **Deployment** | Full QuerySafe stack deployed on client's infrastructure |
-| **SSO Integration** | User-level tokenization with client's identity provider |
-| **Data Sovereignty** | 100% of data stays on client's servers — nothing in the cloud |
-| **Customization** | UI branding, feature toggles, custom integrations |
-| **Support** | Dedicated success manager + priority engineering support |
+| **Higher Limits** | More chatbots, queries, files, and larger file sizes than standard plans |
+| **White-Label Branding** | Remove QuerySafe branding, use your own brand on the widget |
+| **API Access** | Programmatic chatbot management and chat integration |
+| **Priority Support** | Dedicated support with faster response times |
+| **100% Privacy** | Same privacy guarantees as all QuerySafe plans |
 
 Contact: sales@metricvibes.com or +91 75036 59606
 
@@ -1093,10 +1136,12 @@ Contact: sales@metricvibes.com or +91 75036 59606
 
 | Layer | Technology | Version |
 |-------|-----------|---------|
-| **Language** | Python | 3.x |
+| **Language** | Python | 3.13 |
 | **Web Framework** | Django | 5.2 |
-| **WSGI Server** | Gunicorn | 23.0.0 |
-| **Database** | SQLite3 | (Django built-in) |
+| **WSGI Server** | Gunicorn | 23.0.0 (2 workers, 300s timeout) |
+| **Database (Production)** | PostgreSQL | 15 (Cloud SQL db-f1-micro) |
+| **Database (Local Dev)** | SQLite3 | (Django built-in) |
+| **Database Driver** | psycopg2-binary | 2.9.10 |
 | **AI Model** | Google Gemini 2.0 Flash | via Vertex AI |
 | **Vision Model** | Google Gemini 2.0 Flash | via Vertex AI |
 | **Embeddings** | SentenceTransformer | 4.1.0 |
@@ -1108,7 +1153,6 @@ Contact: sales@metricvibes.com or +91 75036 59606
 | **Payment Gateway** | Razorpay | 1.4.1 |
 | **Static Files** | WhiteNoise | 6.8.2 |
 | **Deep Learning** | PyTorch | 2.7.0 |
-| **Task Queue** | Celery + Redis | 5.5.2 / 5.2.1 |
 | **CORS** | django-cors-headers | 4.7.0 |
 | **Email** | Django SMTP (Hostinger) | Built-in |
 
@@ -1213,7 +1257,7 @@ GET /widget/{chatbot_id}/querySafe.js
 
 ### 6.5 Data Models
 
-QuerySafe uses 15 Django models organized into 4 domains:
+QuerySafe uses 16 Django models organized into 5 domains:
 
 #### User & Authentication Domain
 
@@ -1247,6 +1291,8 @@ Chatbot
 ├── logo (ImageField)
 ├── bot_instructions (system prompt)
 ├── sample_questions (newline-separated)
+├── collect_email (bool, default: False)
+├── collect_email_message (text, default: "Please enter your email to get started.")
 ├── last_trained_at
 └── created_at
 
@@ -1272,6 +1318,7 @@ Conversation
 ├── conversation_id (PK, format: {10 chars})
 ├── chatbot → Chatbot (FK)
 ├── user_id (session identifier)
+├── visitor_email (EmailField, optional — from lead capture)
 ├── started_at
 └── last_updated
 
@@ -1338,6 +1385,16 @@ QSPlanAllot
 ├── no_of_bot, no_of_query, no_of_files, file_size (snapshots)
 ├── start_date, expire_date
 └── created_at, updated_at
+```
+
+#### Vision API Tracking Domain
+
+```
+VisionAPIUsage
+├── chatbot → Chatbot (FK)
+├── call_count (positive integer)
+├── call_type (training/chat)
+└── created_at
 ```
 
 #### Activity & Support Domain
@@ -1446,11 +1503,10 @@ HelpSupportRequest
 |---------|---------|---------|
 | razorpay | 1.4.1 | Payment gateway SDK |
 
-#### Background Processing
+#### Database
 | Package | Version | Purpose |
 |---------|---------|---------|
-| celery | 5.5.2 | Distributed task queue |
-| redis | 5.2.1 | Message broker for Celery |
+| psycopg2-binary | 2.9.10 | PostgreSQL database adapter |
 
 ---
 
@@ -1502,6 +1558,17 @@ HelpSupportRequest
 
 QuerySafe's development roadmap focuses on three pillars: **expanding capabilities**, **deepening integrations**, and **strengthening enterprise readiness**.
 
+### Recently Completed
+
+| Feature | Description | Status |
+|---------|-------------|--------|
+| **PostgreSQL Migration** | Migrated from SQLite3 to Cloud SQL PostgreSQL 15 for production scale | Done |
+| **Lead Capture** | Optional visitor email collection before first chat message | Done |
+| **Vision API Cost Tracking** | VisionAPIUsage model tracks Gemini Vision calls per chatbot | Done |
+| **Synchronous Training** | Training runs within HTTP request to prevent Cloud Run CPU throttling | Done |
+| **Model Pre-Download** | SentenceTransformer model baked into Docker image for fast cold starts | Done |
+| **SMB Repositioning** | Enterprise/On-Premise card replaced with Custom/Agency for SMB market | Done |
+
 ### Near-Term (Next 3-6 Months)
 
 | Feature | Description | Impact |
@@ -1509,7 +1576,6 @@ QuerySafe's development roadmap focuses on three pillars: **expanding capabiliti
 | **Multi-Language Support** | Chatbots that understand and respond in multiple languages | Global market expansion |
 | **Real-Time Streaming Responses** | Token-by-token response streaming for faster perceived speed | Better user experience |
 | **Custom Widget Domains** | Serve widget from customer's own domain (CNAME) | Enhanced brand trust |
-| **PostgreSQL Migration** | Move from SQLite3 to PostgreSQL for production scale | Better concurrency and reliability |
 | **Knowledge Base Versioning** | Track training data versions, rollback to previous versions | Safer content management |
 
 ### Mid-Term (6-12 Months)
@@ -1542,7 +1608,8 @@ QuerySafe's development roadmap focuses on three pillars: **expanding capabiliti
 
 | Resource | URL |
 |----------|-----|
-| **QuerySafe Console** | [console.querysafe.in](https://console.querysafe.in) |
+| **QuerySafe Console** | [console2.querysafe.ai](https://console2.querysafe.ai) |
+| **Console (Cloud Run)** | [querysafe-v2-371440857764.asia-south1.run.app](https://querysafe-v2-371440857764.asia-south1.run.app) |
 | **Marketing Website** | [querysafe.ai](https://querysafe.ai) |
 | **Documentation** | [docs.querysafe.in](https://docs.querysafe.in) |
 | **Privacy Policy** | [querysafe.ai/privacy](https://querysafe.ai/privacy) |
@@ -1599,7 +1666,12 @@ QuerySafe's development roadmap focuses on three pillars: **expanding capabiliti
 | `PROJECT_NAME` | `QuerySafe` | Application name |
 | `PROJECT_ID` | — | Google Cloud project ID |
 | `REGION` | — | Google Cloud region |
-| `DATABASE_NAME` | `db.sqlite3` | Database filename |
+| `DB_NAME` | `querysafe` | PostgreSQL database name (production) |
+| `DB_USER` | `querysafe` | PostgreSQL database user (production) |
+| `DB_PASSWORD` | — | PostgreSQL database password (production) |
+| `DB_HOST` | `/cloudsql/...` | Cloud SQL instance connection path (production) |
+| `DB_PORT` | `5432` | PostgreSQL port (production) |
+| `DATABASE_NAME` | `db.sqlite3` | SQLite database filename (local dev only) |
 | `GEMINI_CHAT_MODEL` | `gemini-2.0-flash-001` | Chat model name |
 | `GEMINI_VISION_MODEL` | `gemini-2.0-flash-001` | Vision model name |
 | `RAZORPAY_KEY_ID` | — | Razorpay API key |

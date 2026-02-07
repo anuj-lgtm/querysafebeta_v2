@@ -411,6 +411,16 @@ def process_pipeline(chatbot_id):
             first_source = image_sources.get(image_items[0][0], "images")
             sourced_text_parts.append((vision_text, first_source))
         print(f"  ✓ Vision processing complete")
+        # Track vision API usage for cost monitoring
+        try:
+            from user_querySafe.models import VisionAPIUsage
+            VisionAPIUsage.objects.create(
+                chatbot_id=chatbot_id,
+                call_count=len(image_items),
+                call_type='training'
+            )
+        except Exception:
+            pass  # Non-critical — don't fail pipeline over tracking
 
     # 3b. URL content ───────────────────────────────────────────────────
     try:

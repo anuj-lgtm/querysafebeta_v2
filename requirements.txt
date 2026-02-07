@@ -116,3 +116,4 @@ zstandard==0.23.0
 razorpay==1.4.1
 gunicorn==23.0.0
 whitenoise==6.8.2
+psycopg2-binary==2.9.10

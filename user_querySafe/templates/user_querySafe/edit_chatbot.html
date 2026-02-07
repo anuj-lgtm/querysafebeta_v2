@@ -102,6 +102,34 @@
                                             {{ form.sample_questions }}
                                             <small class="text-muted mt-1 d-block">Add 2-3 questions visitors might ask. One per line.</small>
                                         </div>
+
+                                        <!-- Lead Capture -->
+                                        <div class="mb-3 mt-4 p-3 border rounded bg-light">
+                                            <div class="form-check form-switch mb-2">
+                                                {{ form.collect_email }}
+                                                <label class="form-check-label fw-bold" for="id_collect_email">
+                                                    <i class="material-symbols-rounded align-middle me-1">mail</i>
+                                                    Lead Capture — Collect Visitor Email
+                                                </label>
+                                            </div>
+                                            <small class="text-muted d-block mb-2">When enabled, visitors must enter their email before the first chat message. Collected emails appear in your Analytics dashboard.</small>
+                                            <div id="email-message-wrapper" style="display:none;">
+                                                <label for="id_collect_email_message" class="form-label small">Email Prompt Message</label>
+                                                {{ form.collect_email_message }}
+                                            </div>
+                                        </div>
+                                        <script>
+                                        document.addEventListener('DOMContentLoaded', function() {
+                                            var cb = document.getElementById('id_collect_email');
+                                            var wrap = document.getElementById('email-message-wrapper');
+                                            if (cb) {
+                                                wrap.style.display = cb.checked ? 'block' : 'none';
+                                                cb.addEventListener('change', function() {
+                                                    wrap.style.display = this.checked ? 'block' : 'none';
+                                                });
+                                            }
+                                        });
+                                        </script>
                                     </div>
                                 </div>
                             </div>
@@ -475,7 +503,7 @@
     function confirmRetrain() {
         Swal.fire({
             title: 'Retrain Chatbot?',
-            html: 'This will rebuild the knowledge base from all current documents and URLs.<br><small class="text-muted">The bot will be unavailable for 1-3 minutes during retraining.</small>',
+            html: 'This will rebuild the knowledge base from all current documents and URLs.<br><small class="text-muted">The bot will be unavailable for a few minutes during retraining.</small>',
             icon: 'question',
             showCancelButton: true,
             confirmButtonColor: '#7125BE',

@@ -1,9 +1,6 @@
 .git
-.gitignore
-.gcloudignore
 __pycache__/
 *.pyc
-*.py[cod]
 db.sqlite3
 db.sqlite3-journal
 venv/
@@ -21,15 +18,12 @@ env.yaml
 .idea/
 .vscode/
 node_modules/
+.gcloudignore
+.gitignore
 source.zip
 *.ps1
-make_source_zip.py
-fix_timestamps.ps1
-staticfiles/
 nul
 *.log
-*.swp
-*.swo
 Thumbs.db
 desktop.ini
 .DS_Store

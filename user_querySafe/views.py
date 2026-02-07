@@ -494,6 +494,12 @@ def chat_message(request):
             )
             print(f"Created new conversation: {conversation.conversation_id}")
 
+        # Save visitor email if provided (lead capture)
+        visitor_email = data.get('visitor_email', '').strip()
+        if visitor_email and not conversation.visitor_email:
+            conversation.visitor_email = visitor_email
+            conversation.save()
+
         # Rate limiting: reject excessive requests instead of blocking the worker
         cache_key = f'chat_message_count_{conversation.user_id}'
         message_count = cache.get(cache_key, 0)
@@ -698,6 +704,8 @@ def serve_widget_js(request, chatbot_id):
         'chatbot_name': chatbot.name,
         'chatbot_logo': logo_url,
         'base_url': base_url,
+        'collect_email': chatbot.collect_email,
+        'collect_email_message': chatbot.collect_email_message or 'Please enter your email to get started.',
     }
     
     response = render(request, 'user_querySafe/widget.js', context, content_type='application/javascript')
@@ -940,6 +948,14 @@ def analytics_view(request, chatbot_id=None):
     convs_with_reply = conv_qs.filter(messages__is_bot=True).distinct().count()
     response_rate = round((convs_with_reply / total_conversations * 100), 1) if total_conversations > 0 else 0
 
+    # Leads collected (conversations with visitor_email)
+    leads_qs = conv_qs.filter(visitor_email__isnull=False).exclude(visitor_email='')
+    leads_collected = leads_qs.count()
+    recent_leads = list(
+        leads_qs.order_by('-started_at')
+        .values_list('visitor_email', flat=True)[:10]
+    )
+
     context = {
         'chatbots': chatbots,
         'selected_bot': selected_bot,
@@ -952,6 +968,8 @@ def analytics_view(request, chatbot_id=None):
         'avg_satisfaction': avg_satisfaction,
         'feedback_count': feedback_count,
         'response_rate': response_rate,
+        'leads_collected': leads_collected,
+        'recent_leads': recent_leads,
     }
     return render(request, 'user_querySafe/analytics.html', context)
 

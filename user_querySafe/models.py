@@ -95,6 +95,8 @@ class Chatbot(models.Model):
     dataset_name = models.CharField(max_length=255, blank=True, null=True)
     bot_instructions = models.TextField(blank=True, default='', help_text='Custom instructions for the chatbot (tone, personality, restrictions)')
     sample_questions = models.TextField(blank=True, default='', help_text='Newline-separated starter questions shown in chat widget')
+    collect_email = models.BooleanField(default=False, help_text='Require visitor email before chatting')
+    collect_email_message = models.TextField(blank=True, default='Please enter your email to get started.', help_text='Message shown when asking for email')
     last_trained_at = models.DateTimeField(null=True, blank=True, help_text='Last successful training timestamp')
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -174,6 +176,7 @@ class Conversation(models.Model):
     conversation_id = models.CharField(max_length=10, unique=True, editable=False)
     chatbot = models.ForeignKey(Chatbot, on_delete=models.CASCADE, related_name='conversations')
     user_id = models.CharField(max_length=100)  # Session or user identifier
+    visitor_email = models.EmailField(blank=True, null=True, help_text='Email collected from visitor via lead capture')
     started_at = models.DateTimeField(auto_now_add=True)
     last_updated = models.DateTimeField(auto_now=True)
     
@@ -277,6 +280,24 @@ class ChatbotFeedback(models.Model):
 
     def __str__(self):
         return f"{self.feedback_id} - {self.conversation.conversation_id}"
+
+
+class VisionAPIUsage(models.Model):
+    """Tracks Gemini Vision API calls per chatbot for cost monitoring."""
+    chatbot = models.ForeignKey('Chatbot', on_delete=models.CASCADE, related_name='vision_usage')
+    call_count = models.PositiveIntegerField(default=1)
+    call_type = models.CharField(max_length=20, choices=[
+        ('training', 'Training Pipeline'),
+        ('chat', 'Chat Response'),
+    ], default='training')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'vision_api_usage'
+
+    def __str__(self):
+        return f"{self.chatbot.chatbot_id} - {self.call_type} ({self.call_count})"
+
 
 class QSPlan(models.Model):
     plan_id = models.CharField(max_length=5, primary_key=True, unique=True)

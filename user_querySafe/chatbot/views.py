@@ -1,6 +1,9 @@
 import os
 import json
+import logging
 from django.contrib import messages
+
+logger = logging.getLogger(__name__)
 from django.http import JsonResponse
 from django.urls import reverse
 from django.utils import timezone
@@ -121,9 +124,14 @@ def create_chatbot(request):
                 pass  # ChatbotURL model not yet available
 
             if successful_uploads > 0 or url_count > 0:
-                # Trigger pipeline ONCE now that all documents/URLs are saved
-                run_pipeline_background(chatbot.chatbot_id)
-                messages.info(request, f"Chatbot '{chatbot.name}' created successfully! Training typically takes 1-3 minutes. You'll see the status change to 'Trained' once it's ready.")
+                # Train synchronously so Cloud Run keeps CPU allocated
+                from .pipeline_processor import process_pipeline
+                try:
+                    process_pipeline(chatbot.chatbot_id)
+                    messages.success(request, f"Chatbot '{chatbot.name}' created and trained successfully!")
+                except Exception as e:
+                    logger.exception("Pipeline failed for chatbot %s", chatbot.chatbot_id)
+                    messages.warning(request, f"Chatbot '{chatbot.name}' created but training encountered an issue. You can retrain from the Edit page.")
                 return redirect('my_chatbots')
             else:
                 messages.error(request, "No documents or URLs were provided.")
@@ -355,11 +363,17 @@ def retrain_chatbot(request, chatbot_id):
     chatbot.status = 'training'
     chatbot.save()
 
-    run_pipeline_background(chatbot.chatbot_id)
+    # Train synchronously so Cloud Run keeps CPU allocated
+    from .pipeline_processor import process_pipeline
+    try:
+        process_pipeline(chatbot.chatbot_id)
+        messages.success(request, f"'{chatbot.name}' retrained successfully!")
+    except Exception as e:
+        logger.exception("Pipeline failed for chatbot %s", chatbot.chatbot_id)
+        messages.error(request, f"Retraining failed. Please try again.")
 
     Activity.log(user, f'Retrained chatbot {chatbot.name}',
                  activity_type='info', icon='refresh')
-    messages.info(request, f"Retraining '{chatbot.name}' started. This may take 1-3 minutes.")
     return redirect('my_chatbots')
 
 

@@ -110,9 +110,27 @@ class ChatbotCreateForm(forms.ModelForm):
         label="Starter Questions"
     )
 
+    collect_email = forms.BooleanField(
+        required=False,
+        label="Collect Visitor Email",
+        widget=forms.CheckboxInput(attrs={
+            'class': 'form-check-input',
+            'id': 'id_collect_email'
+        })
+    )
+    collect_email_message = forms.CharField(
+        widget=forms.TextInput(attrs={
+            'class': 'form-control border px-3',
+            'placeholder': 'Please enter your email to get started.',
+            'id': 'id_collect_email_message'
+        }),
+        required=False,
+        label="Email Prompt Message"
+    )
+
     class Meta:
         model = Chatbot
-        fields = ['name', 'description', 'logo', 'bot_instructions', 'sample_questions']
+        fields = ['name', 'description', 'logo', 'bot_instructions', 'sample_questions', 'collect_email', 'collect_email_message']
 
 class ChatbotEditForm(forms.ModelForm):
     name = forms.CharField(
@@ -160,9 +178,27 @@ class ChatbotEditForm(forms.ModelForm):
         label="Starter Questions"
     )
 
+    collect_email = forms.BooleanField(
+        required=False,
+        label="Collect Visitor Email",
+        widget=forms.CheckboxInput(attrs={
+            'class': 'form-check-input',
+            'id': 'id_collect_email'
+        })
+    )
+    collect_email_message = forms.CharField(
+        widget=forms.TextInput(attrs={
+            'class': 'form-control border px-3',
+            'placeholder': 'Please enter your email to get started.',
+            'id': 'id_collect_email_message'
+        }),
+        required=False,
+        label="Email Prompt Message"
+    )
+
     class Meta:
         model = Chatbot
-        fields = ['name', 'description', 'logo', 'bot_instructions', 'sample_questions']
+        fields = ['name', 'description', 'logo', 'bot_instructions', 'sample_questions', 'collect_email', 'collect_email_message']
 
 class OTPVerificationForm(forms.Form):
     otp = forms.CharField(max_length=6, min_length=6, widget=forms.TextInput(attrs={
