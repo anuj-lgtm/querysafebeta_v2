@@ -1,414 +1,137 @@
 {% extends 'user_querySafe/include/auth-base.html' %}
 {% load static %}
 
-{% block title %}
-Register {{ block.super }}
-{% endblock %}
+{% block title %}Create Account | {{ block.super }}{% endblock %}
 
 {% block content %}
-  <main class="main-content mt-0 ps">
-    <section>
-      <div class="page-header min-vh-100">
-        <div class="container">
-          <div class="row">
-            <div class="col-6 d-lg-flex d-none h-100 my-auto pe-0 position-absolute top-0 start-0 text-center justify-content-center flex-column">
-              <div class="position-relative h-100 m-3 px-7 border-radius-lg d-flex flex-column justify-content-center" style="background-image: url('{% static 'user_querySafe/img/register-bg.png' %}'); background-size: cover;"></div>
-            </div>
-            <div class="col-xl-4 col-lg-5 col-md-7 d-flex flex-column ms-auto me-auto ms-lg-auto me-lg-5">
-              <div class="card card-plain">
+<div class="auth-page">
+  <div class="auth-bg-mesh"></div>
+  <div class="auth-bg-grid"></div>
 
-                <a href="https://querysafe.in/" class="logo">
-                  <img src="{% static 'user_querySafe/img/dark-query-safe-logo.png' %}" alt="logo" class="navbar-brand-img h-100" style="width: 200px; height: auto;" />
-                </a>
+  <div class="d-flex flex-column align-items-center justify-content-center" style="min-height: 100vh; padding: 2rem 0;">
+    <div class="auth-card">
+      <span class="auth-beta-badge">BETA</span>
 
-                <div class="card-header">
-                  <h4 class="font-weight-bolder">Sign Up</h4>
-                  <p class="mb-0">Enter your details to register</p>
-                </div>
-                <div class="card-body">
-                  {% if messages %}
-                    {% for message in messages %}
-                      <div class="alert alert-{{ message.tags }} alert-dismissible text-white mb-3" role="alert">
-                        <span class="text-sm">{{ message }}</span>
-                        <button type="button" class="btn-close text-lg py-3 opacity-10" data-bs-dismiss="alert" aria-label="Close">
-                          <span aria-hidden="true">&times;</span>
-                        </button>
-                      </div>
-                    {% endfor %}
-                  {% endif %}
-                  <form role="form" method="POST">
-                    {% csrf_token %}
-                    <div class="input-group input-group-outline mb-3">
-                      <input 
-                        type="text" 
-                        name="name"
-                        class="form-control"
-                        placeholder="Full Name"
-                        required
-                      >
-                    </div>
-                    <div class="input-group input-group-outline mb-3">
-                      <input 
-                        type="email" 
-                        name="email"
-                        class="form-control"
-                        placeholder="Email"
-                        required
-                      >
-                    </div>
-                    <div class="input-group input-group-outline mb-3 position-relative">
-                      <input 
-                        type="password" 
-                        name="password"
-                        class="form-control"
-                        placeholder="Password"
-                        required
-                        minlength="8"
-                      >
-                      <button type="button" class="btn btn-link text-dark position-absolute end-0 top-0 text-sm py-2 px-3">
-                        <i class="far fa-eye" id="togglePasswordIcon"></i>
-                      </button>
-                    </div>
-                    <!-- <div class="password-note mb-3">
-                      <small class="text-muted">Note: Password must be at least 8 characters long</small>
-                    </div> -->
-                    <div class="input-group input-group-outline mb-3 position-relative">
-                      <input 
-                        type="password" 
-                        name="confirm_password"
-                        class="form-control"
-                        placeholder="Confirm Password"
-                        required
-                      >
-                      <button type="button" class="btn btn-link text-dark position-absolute end-0 top-0 text-sm py-2 px-3">
-                        <i class="far fa-eye" id="toggleConfirmPasswordIcon"></i>
-                      </button>
-                    </div>
-                    
-                    <div class="password-note mb-3">
-                      <small class="text-muted">Note: Password must be at least 8 characters long</small>
-                    </div>
-                    <div class="form-check form-check-info text-start ps-0">
-                      <input class="form-check-input form-input-custom-checkbox" type="checkbox" value="" id="flexCheckDefault" checked="" />
-                      <label class="form-check-label" for="flexCheckDefault">I agree the <a href="javascript:;" class="text-dark font-weight-bolder">Terms and Conditions</a></label>
-                    </div>
-                    <div class="text-center">
-                      <button type="submit" class="btn btn-lg bg-gradient-dark btn-lg w-100 mt-4 mb-0">Sign Up</button>
-                    </div>
-                  </form>
-                </div>
-                <div class="card-footer text-center pt-0 px-lg-2 px-1">
-                  <p class="mb-2 text-sm mx-auto">
-                    Already have an account?
-                    <a href="{% url 'login' %}" class="text-primary font-weight-bold">Sign in</a>
-                  </p>
-                </div>
-              </div>
-            </div>
+      <a href="https://querysafe.in/">
+        <img src="{% static 'user_querySafe/img/dark-query-safe-logo.png' %}" alt="QuerySafe" class="auth-logo" />
+      </a>
+
+      <h1 class="auth-title">Create Account</h1>
+      <p class="auth-subtitle">Start building AI chatbots in minutes</p>
+
+      <!-- Django messages as inline alerts -->
+      {% if messages %}
+        {% for message in messages %}
+          <div class="auth-alert auth-alert-{% if message.tags == 'error' %}error{% elif message.tags == 'warning' %}warning{% elif message.tags == 'info' %}info{% else %}success{% endif %}">
+            <i class="material-symbols-rounded" style="font-size:1.1rem;">
+              {% if message.tags == 'error' %}error{% elif message.tags == 'warning' %}warning{% elif message.tags == 'info' %}info{% else %}check_circle{% endif %}
+            </i>
+            <span>{{ message }}</span>
+            <button class="close-btn" onclick="this.parentElement.remove()">&times;</button>
           </div>
-        </div>
+        {% endfor %}
+      {% endif %}
+
+      {% if google_enabled %}
+      <!-- Google Sign-Up -->
+      <a href="{% url 'google_login' %}" class="auth-google-btn">
+        <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+        Continue with Google
+      </a>
+
+      <div class="auth-divider">
+        <span>or</span>
       </div>
-    </section>
-  </main>
-{% endblock %}
+      {% endif %}
 
-{% block extra_css %}
-  <style>
-    .input-group-outline {
-      position: relative;
-    }
-    .form-control {
-      border: 1px solid #d2d6da;
-      padding: 0.625rem 0.75rem;
-      line-height: 1.3;
-    }
-    .alert {
-      margin-bottom: 1rem;
-      padding: 1rem;
-      border-radius: 0.5rem;
-    }
-    .alert-error {
-      background-color: #f44335;
-    }
-    .alert-success {
-      background-color: #4caf50;
-    }
+      <!-- Registration Form -->
+      <form method="POST" id="registerForm">
+        {% csrf_token %}
 
-    /* Custom Checkbox Styling */
-    .form-input-custom-checkbox {
-        width: 1.2rem !important;
-        height: 1.2rem !important;
-        margin-top: 0.25rem !important;
-        background-color: #fff !important;
-        border: 2px solid #d2d6da !important;
-        border-radius: 0.25rem !important;
-        transition: all 0.2s ease-in-out !important;
-        appearance: none !important;
-        -webkit-appearance: none !important;
-        cursor: pointer !important;
-        position: relative !important;
-    }
-    #flexCheckDefault{
-      margin-left: 0px !important;
-    }
-    .form-input-custom-checkbox:checked {
-        background-color: #7125be !important;
-        border-color: #7125be !important;
-    }
+        <div class="auth-input-group">
+          <input type="text" name="name" class="auth-input" placeholder="Full Name" required autocomplete="name" />
+        </div>
 
-    .form-input-custom-checkbox:checked::after {
-        content: '✓' !important;
-        position: absolute !important;
-        color: white !important;
-        font-size: 0.9rem !important;
-        font-weight: bold !important;
-        left: 50% !important;
-        top: 50% !important;
-        transform: translate(-50%, -50%) !important;
-    }
+        <div class="auth-input-group">
+          <input type="email" name="email" class="auth-input" placeholder="Email address" required autocomplete="email" />
+        </div>
 
-    .form-input-custom-checkbox:focus {
-        border-color: #7125be !important;
-        box-shadow: 0 0 0 0.2rem rgba(113, 37, 190, 0.25) !important;
-        outline: none !important;
-    }
+        <div class="auth-input-group">
+          <input type="password" name="password" id="regPassword" class="auth-input" placeholder="Password" required minlength="8" autocomplete="new-password" />
+          <button type="button" class="auth-pw-toggle" aria-label="Toggle password visibility" data-target="regPassword">
+            <i class="far fa-eye"></i>
+          </button>
+        </div>
 
-    /* Fix checkbox position and label alignment */
-    .form-check {
-        padding-left: 0.5rem !important;
-        display: flex !important;
-        align-items: center !important;
-    }
+        <div class="auth-input-group">
+          <input type="password" name="confirm_password" id="regConfirmPassword" class="auth-input" placeholder="Confirm Password" required autocomplete="new-password" />
+          <button type="button" class="auth-pw-toggle" aria-label="Toggle password visibility" data-target="regConfirmPassword">
+            <i class="far fa-eye"></i>
+          </button>
+        </div>
 
-    .form-check-label {
-        margin-left: 0.5rem !important;
-        user-select: none !important;
-    }
+        <p class="auth-pw-hint">Password must be at least 8 characters long</p>
 
-    .error-feedback {
-        position: absolute;
-        bottom: -20px;
-        left: 0;
-        font-size: 0.75rem;
-        margin-top: 0.25rem;
-    }
+        <div class="auth-check">
+          <input type="checkbox" id="termsCheck" checked required />
+          <label for="termsCheck">I agree to the <a href="javascript:;">Terms and Conditions</a></label>
+        </div>
 
-    .input-group {
-        position: relative;
-        margin-bottom: 1.5rem;
-    }
+        <button type="submit" class="auth-btn">Sign Up</button>
+      </form>
 
-    .input-group-outline.has-error .form-control {
-        border-color: #fd5c70;
-    }
+      <p class="auth-link">
+        Already have an account? <a href="{% url 'login' %}">Sign in</a>
+      </p>
+    </div>
 
-    .input-group.has-error .form-control {
-        border-color: #fd5c70 !important;
-        box-shadow: 0 0 0 0.2rem rgba(253, 92, 112, 0.25);
-    }
-
-    .error-feedback {
-        position: absolute;
-        bottom: -20px;
-        left: 0;
-        font-size: 0.75rem;
-        color: #fd5c70;
-        margin-top: 0.25rem;
-    }
-
-    /* Add styles for alert messages */
-    .alert {
-      position: relative;
-      border: 0;
-      border-radius: 0.75rem;
-      color: #fff;
-      padding: 0.75rem 1.25rem;
-    }
-
-    .alert.alert-error {
-      background-color: #f44335;
-    }
-
-    .alert.alert-success {
-      background-color: #4caf50;
-    }
-
-    .alert.alert-info {
-      background-color: #1a73e8;
-    }
-
-    .alert .btn-close {
-      color: #fff;
-      position: absolute;
-      right: 0.75rem;
-      top: 50%;
-      transform: translateY(-50%);
-    }
-
-    .alert .text-sm {
-      font-size: 0.875rem;
-    }
-
-    /* Toast styles */
-    .toast {
-        border: none;
-        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
-        opacity: 1 !important;
-    }
-    
-    .toast.bg-danger {
-        background-color: #f44335 !important;
-    }
-    
-    .toast .btn-close-white {
-        filter: brightness(0) invert(1);
-    }
-    
-    .toast-header {
-        border-bottom: none;
-        padding: 0.75rem 1rem;
-    }
-    
-    .toast-body {
-        padding: 0.75rem 1rem;
-        font-size: 0.875rem;
-    }
-    
-    /* Animation for toast */
-    .toast.show {
-        animation: slideIn 0.3s ease-out;
-    }
-    
-    @keyframes slideIn {
-        from {
-            transform: translateX(100%);
-            opacity: 0;
-        }
-        to {
-            transform: translateX(0);
-            opacity: 1;
-        }
-    }
-
-    .password-requirements {
-      font-size: 0.75rem;
-      color: #67748e;
-    }
-
-    .requirements-list {
-      list-style-type: none;
-      padding-left: 0;
-      margin-top: 0.25rem;
-    }
-
-    .requirements-list li {
-      position: relative;
-      padding-left: 1.25rem;
-      margin-bottom: 0.125rem;
-    }
-
-    .requirements-list li::before {
-      content: '×';
-      position: absolute;
-      left: 0;
-      color: #f44335;
-    }
-
-    .requirements-list li.valid::before {
-      content: '✓';
-      color: #4caf50;
-    }
-
-    .text-xs {
-      font-size: 0.75rem;
-    }
-  </style>
+    <div class="auth-footer">
+      &copy; <script>document.write(new Date().getFullYear())</script> Made with
+      <i class="material-symbols-rounded heart-icon">favorite</i> by
+      <a href="https://www.metricvibes.com" target="_blank">Metric Vibes</a>
+    </div>
+  </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Handle password toggles
-    function setupPasswordToggle(inputSelector, iconId) {
-        const passwordField = document.querySelector(inputSelector);
-        const toggleIcon = document.getElementById(iconId);
-        
-        if (passwordField && toggleIcon) {
-            toggleIcon.parentElement.addEventListener('click', function(e) {
-                e.preventDefault();
-                
-                if (passwordField.type === 'password') {
-                    passwordField.type = 'text';
-                    toggleIcon.classList.remove('fa-eye');
-                    toggleIcon.classList.add('fa-eye-slash');
-                } else {
-                    passwordField.type = 'password';
-                    toggleIcon.classList.remove('fa-eye-slash');
-                    toggleIcon.classList.add('fa-eye');
-                }
-                
-                this.classList.add('pulse');
-                setTimeout(() => this.classList.remove('pulse'), 500);
-            });
+  // Password toggles
+  document.querySelectorAll('.auth-pw-toggle').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+      e.preventDefault();
+      var targetId = this.getAttribute('data-target');
+      var field = document.getElementById(targetId);
+      var icon = this.querySelector('i');
+      if (field && icon) {
+        if (field.type === 'password') {
+          field.type = 'text';
+          icon.classList.replace('fa-eye', 'fa-eye-slash');
+        } else {
+          field.type = 'password';
+          icon.classList.replace('fa-eye-slash', 'fa-eye');
         }
-    }
-
-    // Setup both password fields
-    setupPasswordToggle('input[name="password"]', 'togglePasswordIcon');
-    setupPasswordToggle('input[name="confirm_password"]', 'toggleConfirmPasswordIcon');
-
-    // Simple form validation
-    const form = document.querySelector('form');
-    form.addEventListener('submit', function(e) {
-        const password = form.querySelector('input[name="password"]').value;
-        const confirmPassword = form.querySelector('input[name="confirm_password"]').value;
-        
-        if (password.length < 8) {
-            e.preventDefault();
-            showToast('Password must be at least 8 characters long', 'Error');
-            return;
-        }
-        
-        if (password !== confirmPassword) {
-            e.preventDefault();
-            showToast('Passwords do not match!', 'Error');
-        }
+      }
     });
+  });
 
-    // Toast helper function
-    function showToast(message, title) {
-        const toaster = document.createElement('div');
-        toaster.className = 'position-fixed top-0 end-0 p-3';
-        toaster.style.zIndex = '1031';
-        
-        const toast = document.createElement('div');
-        toast.className = 'toast show bg-danger text-white';
-        toast.setAttribute('role', 'alert');
-        toast.setAttribute('aria-live', 'assertive');
-        toast.setAttribute('aria-atomic', 'true');
-        
-        toast.innerHTML = `
-            <div class="toast-header bg-danger text-white">
-                <strong class="me-auto">${title}</strong>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
-            </div>
-            <div class="toast-body">
-                ${message}
-            </div>
-        `;
-        
-        toaster.appendChild(toast);
-        document.body.appendChild(toaster);
-        
-        setTimeout(() => {
-            toaster.remove();
-        }, 3000);
-        
-        const closeBtn = toast.querySelector('.btn-close');
-        closeBtn.addEventListener('click', () => {
-            toaster.remove();
-        });
+  // Form validation
+  document.getElementById('registerForm').addEventListener('submit', function(e) {
+    var pw = document.getElementById('regPassword').value;
+    var cpw = document.getElementById('regConfirmPassword').value;
+
+    if (pw.length < 8) {
+      e.preventDefault();
+      showToast('error', 'Password must be at least 8 characters long');
+      return;
     }
+
+    if (pw !== cpw) {
+      e.preventDefault();
+      showToast('error', 'Passwords do not match');
+    }
+  });
 });
 </script>
 {% endblock %}

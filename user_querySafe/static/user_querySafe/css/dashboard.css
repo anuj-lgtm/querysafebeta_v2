@@ -217,3 +217,44 @@
   transform: translateY(-2px);
   box-shadow: 0 5px 15px rgba(113, 37, 190, 0.15);
 }
+
+/* ── Modern card enhancements ── */
+.card {
+  border-radius: 1rem;
+  border: none;
+}
+
+.card-header {
+  border-radius: 1rem 1rem 0 0;
+}
+
+/* ── Table modernization ── */
+.table thead th {
+  border-bottom: 2px solid #f0f0f5;
+  font-size: 0.68rem;
+  padding: 0.6rem 0.5rem;
+}
+
+.table tbody td {
+  vertical-align: middle;
+  border-bottom: 1px solid #f5f5fa;
+}
+
+.table tbody tr {
+  transition: background-color 0.15s ease;
+}
+
+.table tbody tr:hover {
+  background-color: #fafafe;
+}
+
+/* ── Icon shape modernization ── */
+.icon-shape {
+  border-radius: 0.875rem;
+}
+
+/* ── Stat card footer ── */
+.dashboard-stat-card .card-footer {
+  border-top: 1px solid #f0f2f5;
+  background: transparent;
+}

@@ -25,8 +25,9 @@ from .decorators import redirect_authenticated_user, login_required
 from django.views.decorators.http import require_http_methods
 from django.core.cache import cache
 from django.urls import reverse
-from django.db import models 
+from django.db import models
 import time  # Import the time module
+import requests as http_requests  # renamed to avoid conflict with django request
 
 # Initialize Gemini client (embedding model loaded lazily via singleton)
 client = genai.Client(vertexai=True, project=settings.PROJECT_ID, location=settings.REGION)
@@ -83,7 +84,9 @@ def register_view(request):
             messages.success(request, 'Please check your email for the OTP verification code.')
             return redirect('verify_otp')
 
-    return render(request, 'user_querySafe/register.html')
+    return render(request, 'user_querySafe/register.html', {
+        'google_enabled': bool(settings.GOOGLE_CLIENT_ID),
+    })
 
 @redirect_authenticated_user
 def verify_otp_view(request):
@@ -196,6 +199,158 @@ def resend_otp_view(request):
             })
     return JsonResponse({'success': False, 'message': 'Invalid request method.'})
 
+# ── Google OAuth 2.0 ──────────────────────────────────────────────
+GOOGLE_AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth'
+GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token'
+GOOGLE_USERINFO_URL = 'https://www.googleapis.com/oauth2/v3/userinfo'
+GOOGLE_SCOPES = 'openid email profile'
+
+
+@redirect_authenticated_user
+def google_login_redirect(request):
+    """Redirect user to Google OAuth consent screen."""
+    client_id = settings.GOOGLE_CLIENT_ID
+    redirect_uri = settings.GOOGLE_REDIRECT_URI
+
+    if not client_id or not redirect_uri:
+        messages.error(request, 'Google Sign-In is not configured.')
+        return redirect('login')
+
+    import hashlib, secrets
+    state = secrets.token_urlsafe(32)
+    request.session['google_oauth_state'] = state
+
+    params = {
+        'client_id': client_id,
+        'redirect_uri': redirect_uri,
+        'response_type': 'code',
+        'scope': GOOGLE_SCOPES,
+        'state': state,
+        'access_type': 'offline',
+        'prompt': 'select_account',
+    }
+    from urllib.parse import urlencode
+    auth_url = f"{GOOGLE_AUTH_URL}?{urlencode(params)}"
+    return redirect(auth_url)
+
+
+@redirect_authenticated_user
+def google_callback(request):
+    """Handle the callback from Google OAuth."""
+    # Validate state to prevent CSRF
+    state = request.GET.get('state')
+    stored_state = request.session.pop('google_oauth_state', None)
+
+    if not state or state != stored_state:
+        messages.error(request, 'Invalid authentication state. Please try again.')
+        return redirect('login')
+
+    code = request.GET.get('code')
+    error = request.GET.get('error')
+
+    if error:
+        messages.error(request, f'Google sign-in was cancelled or failed.')
+        return redirect('login')
+
+    if not code:
+        messages.error(request, 'No authorization code received from Google.')
+        return redirect('login')
+
+    # Exchange authorization code for tokens
+    try:
+        token_response = http_requests.post(GOOGLE_TOKEN_URL, data={
+            'code': code,
+            'client_id': settings.GOOGLE_CLIENT_ID,
+            'client_secret': settings.GOOGLE_CLIENT_SECRET,
+            'redirect_uri': settings.GOOGLE_REDIRECT_URI,
+            'grant_type': 'authorization_code',
+        }, timeout=10)
+
+        if token_response.status_code != 200:
+            messages.error(request, 'Failed to authenticate with Google. Please try again.')
+            return redirect('login')
+
+        tokens = token_response.json()
+        access_token = tokens.get('access_token')
+
+        if not access_token:
+            messages.error(request, 'Failed to get access token from Google.')
+            return redirect('login')
+
+    except Exception:
+        messages.error(request, 'Could not connect to Google. Please try again.')
+        return redirect('login')
+
+    # Fetch user info from Google
+    try:
+        userinfo_response = http_requests.get(
+            GOOGLE_USERINFO_URL,
+            headers={'Authorization': f'Bearer {access_token}'},
+            timeout=10,
+        )
+
+        if userinfo_response.status_code != 200:
+            messages.error(request, 'Failed to fetch your Google profile.')
+            return redirect('login')
+
+        userinfo = userinfo_response.json()
+        email = userinfo.get('email')
+        name = userinfo.get('name', '')
+        email_verified = userinfo.get('email_verified', False)
+
+        if not email:
+            messages.error(request, 'Could not retrieve email from Google.')
+            return redirect('login')
+
+        if not email_verified:
+            messages.error(request, 'Your Google email is not verified.')
+            return redirect('login')
+
+    except Exception:
+        messages.error(request, 'Error retrieving your Google profile.')
+        return redirect('login')
+
+    # Find or create user
+    try:
+        user = User.objects.get(email=email)
+        # Existing user — check if active
+        if not user.is_active:
+            # Auto-activate since Google has verified their email
+            user.is_active = True
+            user.registration_status = 'activated'
+            user.activated_at = timezone.now()
+            user.save()
+    except User.DoesNotExist:
+        # Create new user — auto-activated (Google verified email)
+        user = User(
+            name=name or email.split('@')[0],
+            email=email,
+            is_active=True,
+            registration_status='activated',
+            activated_at=timezone.now(),
+        )
+        user.set_password(None)  # No password for Google users
+        user.save()
+
+    # Set session
+    request.session['user_id'] = user.user_id
+    request.session.set_expiry(30 * 24 * 60 * 60)  # 30 days
+
+    # Check for active plan
+    active_plan = QSPlanAllot.objects.filter(
+        user=user,
+        expire_date__gte=timezone.now().date()
+    ).order_by('-created_at').first()
+
+    if active_plan:
+        request.session['active_plan'] = active_plan.plan_name
+    else:
+        request.session['active_plan'] = "No active plan"
+
+    messages.success(request, f'Welcome, {user.name}!')
+    return redirect('dashboard')
+
+
 @redirect_authenticated_user
 def login_view(request):
     if request.method == 'POST':
@@ -261,7 +416,9 @@ def login_view(request):
             messages.error(request, 'No account found with this email')
 
     # For GET requests, just render the login page
-    return render(request, 'user_querySafe/login.html')
+    return render(request, 'user_querySafe/login.html', {
+        'google_enabled': bool(settings.GOOGLE_CLIENT_ID),
+    })
 
 def logout_view(request):
     if 'user_id' in request.session:

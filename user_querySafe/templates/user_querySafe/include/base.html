@@ -128,20 +128,59 @@
       .toast.bg-danger {
         background: #f44335 !important;
       }
-      
+
       .toast.bg-danger .toast-body {
         color: #fff !important;
         font-weight: 500;
         text-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);
       }
-      
+
       .toast.bg-danger .toast-header {
         color: #fff;
         border-bottom: 1px solid rgba(255, 255, 255, 0.1);
       }
-      
+
       .toast.bg-danger .horizontal.light {
         background-color: rgba(255, 255, 255, 0.1);
+      }
+
+      /* Warning Toast Styling */
+      .toast.bg-warning {
+        background: linear-gradient(135deg, #fb8c00, #f57c00) !important;
+      }
+
+      .toast.bg-warning .toast-body {
+        color: #fff !important;
+        font-weight: 500;
+      }
+
+      .toast.bg-warning .toast-header {
+        color: #fff;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+      }
+
+      .toast.bg-warning .horizontal.light {
+        background-color: rgba(255, 255, 255, 0.15);
+      }
+
+      /* Close button improvements */
+      .toast .btn-close {
+        opacity: 0.8;
+        transition: opacity 0.2s;
+      }
+
+      .toast .btn-close:hover {
+        opacity: 1;
+      }
+
+      /* Alert close button improvements */
+      .alert .btn-close {
+        opacity: 0.8;
+        padding: 1rem;
+      }
+
+      .alert .btn-close:hover {
+        opacity: 1;
       }
     </style>
 
@@ -157,7 +196,7 @@
         <div class="toast-header border-0">
           <i class="material-symbols-rounded text-success me-2">check_circle</i>
           <span class="me-auto font-weight-bold">Success</span>
-          <i class="fas fa-times text-md ms-3 cursor-pointer" data-bs-dismiss="toast" aria-label="Close"></i>
+          <button type="button" class="btn-close ms-3" data-bs-dismiss="toast" aria-label="Close" style="font-size: 0.7rem;"></button>
         </div>
         <hr class="horizontal dark m-0" />
         <div class="toast-body" id="successToastMessage"></div>
@@ -168,10 +207,21 @@
         <div class="toast-header border-0">
           <i class="material-symbols-rounded text-white me-2">error</i>
           <span class="me-auto text-white font-weight-bold">Error</span>
-          <i class="fas fa-times text-white ms-3 cursor-pointer" data-bs-dismiss="toast" aria-label="Close"></i>
+          <button type="button" class="btn-close btn-close-white ms-3" data-bs-dismiss="toast" aria-label="Close" style="font-size: 0.7rem;"></button>
         </div>
         <hr class="horizontal light m-0" />
         <div class="toast-body text-white" id="errorToastMessage"></div>
+      </div>
+
+      <!-- Warning Toast -->
+      <div class="toast fade hide p-2 mt-2 bg-warning" role="alert" aria-live="assertive" id="warningToast" aria-atomic="true">
+        <div class="toast-header border-0">
+          <i class="material-symbols-rounded text-white me-2">warning</i>
+          <span class="me-auto text-white font-weight-bold">Warning</span>
+          <button type="button" class="btn-close btn-close-white ms-3" data-bs-dismiss="toast" aria-label="Close" style="font-size: 0.7rem;"></button>
+        </div>
+        <hr class="horizontal light m-0" />
+        <div class="toast-body text-white" id="warningToastMessage"></div>
       </div>
     </div>
     <!-- Main Content -->
@@ -232,12 +282,8 @@
             <div class="col-12">
               {% for message in messages %}
               <div class="alert alert-{% if message.tags == 'error' %}danger{% elif message.tags == 'warning' %}warning{% else %}success{% endif %} alert-dismissible text-white fade show" role="alert">
-                <span class="text-sm">
-                  {{ message }}
-                </span>
-                <button type="button" class="btn-close text-lg py-3 opacity-10" data-bs-dismiss="alert" aria-label="Close">
-                  <span aria-hidden="true">×</span>
-                </button>
+                <span class="text-sm">{{ message }}</span>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert" aria-label="Close" style="font-size: 0.65rem; opacity: 0.8;"></button>
               </div>
               {% endfor %}
             </div>
@@ -287,7 +333,7 @@
         const toastMessage = document.getElementById(type + 'ToastMessage');
 
         if (!toast || !toastMessage) {
-            console.error('Toast elements not found');
+            console.error('Toast elements not found for type:', type);
             return;
         }
 
@@ -310,7 +356,7 @@
         {% if messages %}
             {% for message in messages %}
                 showToast(
-                    '{% if message.tags == "error" %}error{% elif message.tags == "warning" %}error{% else %}success{% endif %}',
+                    '{% if message.tags == "error" %}error{% elif message.tags == "warning" %}warning{% else %}success{% endif %}',
                     '{{ message|escapejs }}'
                 );
             {% endfor %}

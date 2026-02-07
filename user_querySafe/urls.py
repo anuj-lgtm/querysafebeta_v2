@@ -15,6 +15,10 @@ urlpatterns = [
     path('verify-otp/', views.verify_otp_view, name='verify_otp'),
     path('resend-otp/', views.resend_otp_view, name='resend_otp'),
 
+    # Google OAuth 2.0
+    path('auth/google/', views.google_login_redirect, name='google_login'),
+    path('auth/google/callback/', views.google_callback, name='google_callback'),
+
     # conversations related paths
     path('conversations/', views.conversations_view, name='conversations'),
     path('conversations/<str:chatbot_id>/', views.conversations_view, name='conversations_by_chatbot'),

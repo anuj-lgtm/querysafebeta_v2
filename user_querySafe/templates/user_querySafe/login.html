@@ -1,208 +1,100 @@
 {% extends 'user_querySafe/include/auth-base.html' %}
 {% load static %}
 
-{% block title %}
-  Login {{ block.super }}
-{% endblock %}
+{% block title %}Sign In | {{ block.super }}{% endblock %}
 
 {% block content %}
-  <main class="main-content mt-0 ps">
-    <div class="page-header align-items-start min-vh-100" style="background-image: url('{% static 'user_querySafe/img/login-bg.png' %}');">
-      <span class="mask bg-gradient-dark opacity-1"></span>
-      <div class="container my-auto">
-        <div class="row">
-          <div class="col-lg-4 col-md-8 col-12 mx-auto">
-            <div class="card border z-index-0 fadeIn3 fadeInBottom">
-              <div class="card-header p-0 position-relative mt-n4 mx-3 z-index-2">
-                <div class="ribbon-beta">BETA</div>
-                <div class="bg-gradient-dark shadow-dark border-radius-lg py-4 pe-1">
-                  <h4 class="text-white font-weight-bolder text-center mt-2 mb-0">Sign in</h4>
-                </div>
-              </div>
+<div class="auth-page">
+  <div class="auth-bg-mesh"></div>
+  <div class="auth-bg-grid"></div>
 
-              <div class="card-body">
-                <form role="form" class="text-start" method="POST">
-                  {% csrf_token %}
-                  <div class="input-group input-group-outline my-3">
-                    <input 
-                      type="email" 
-                      name="email"
-                      class="form-control"
-                      placeholder="Email"
-                      required
-                    >
-                  </div>
-                  <div class="input-group input-group-outline mb-3 position-relative">
-                    <input 
-                      type="password" 
-                      name="password"
-                      class="form-control"
-                      placeholder="Password"
-                      required
-                    >
-                    <button type="button" class="btn btn-link text-dark position-absolute end-0 top-0 text-sm py-2 px-3" onclick="togglePassword()">
-                      <i class="far fa-eye" id="togglePasswordIcon"></i>
-                    </button>
-                  </div>
-                  <!-- <div class="form-check form-switch d-flex align-items-center mb-3">
-                    <input class="form-check-input" type="checkbox" id="rememberMe" name="remember_me">
-                    <label class="form-check-label mb-0 ms-3" for="rememberMe">Remember me</label>
-                  </div> -->
-                  <div class="text-center">
-                    <button type="submit" class="btn bg-gradient-dark w-100 my-4 mb-2">Sign in</button>
-                  </div>
-                  <p class="mt-4 text-sm text-center">
-                    Don't have an account?
-                    <a href="{% url 'register' %}" class="text-primary font-weight-bold">Sign up</a>
-                  </p>
-                </form>
-              </div>
-            </div>
+  <div class="d-flex flex-column align-items-center justify-content-center" style="min-height: 100vh; padding: 2rem 0;">
+    <div class="auth-card">
+      <span class="auth-beta-badge">BETA</span>
+
+      <a href="https://querysafe.in/">
+        <img src="{% static 'user_querySafe/img/dark-query-safe-logo.png' %}" alt="QuerySafe" class="auth-logo" />
+      </a>
+
+      <h1 class="auth-title">Welcome Back</h1>
+      <p class="auth-subtitle">Sign in to your QuerySafe account</p>
+
+      <!-- Django messages as inline alerts -->
+      {% if messages %}
+        {% for message in messages %}
+          <div class="auth-alert auth-alert-{% if message.tags == 'error' %}error{% elif message.tags == 'warning' %}warning{% elif message.tags == 'info' %}info{% else %}success{% endif %}">
+            <i class="material-symbols-rounded" style="font-size:1.1rem;">
+              {% if message.tags == 'error' %}error{% elif message.tags == 'warning' %}warning{% elif message.tags == 'info' %}info{% else %}check_circle{% endif %}
+            </i>
+            <span>{{ message }}</span>
+            <button class="close-btn" onclick="this.parentElement.remove()">&times;</button>
           </div>
-        </div>
-        <div class="text-center my-4">
-          <a href="https://querysafe.in/" class="logo d-inline-block"><img src="{% static 'user_querySafe/img/dark-query-safe-logo.png' %}" alt="QuerySafe Logo" class="navbar-brand-img" style="width: 180px; height: auto; filter: drop-shadow(0px 4px 6px rgba(0, 0, 0, 0.2));" /></a>
-        </div>
+        {% endfor %}
+      {% endif %}
+
+      {% if google_enabled %}
+      <!-- Google Sign-In -->
+      <a href="{% url 'google_login' %}" class="auth-google-btn">
+        <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+        Continue with Google
+      </a>
+
+      <div class="auth-divider">
+        <span>or</span>
       </div>
-      <footer class="footer position-absolute bottom-2 py-2 w-100" style="background: #ffffff00; border-top: 0px;">
-        <div class="container">
-          <div class="row align-items-center justify-content-lg-center">
-            <div class="col-lg-6 mb-lg-0 mb-4">
-              <div class="copyright text-center text-sm text-white text-lg-center" style="color: black !important;">
-                ©<script>
-                   document.write(new Date().getFullYear())
-                 </script>, Made with <i class="material-symbols-rounded" style="color: rgb(163, 0, 0); vertical-align: middle; font-size: 1.1rem;">favorite</i> by
-                <a href="https://www.metricvibes.com" class="font-weight-bolder" target="_blank">Metric Vibes.</a>
-              </div>
-            </div>
-          </div>
+      {% endif %}
+
+      <!-- Email/Password Form -->
+      <form method="POST" id="loginForm">
+        {% csrf_token %}
+
+        <div class="auth-input-group">
+          <input type="email" name="email" class="auth-input" placeholder="Email address" required autocomplete="email" />
         </div>
-      </footer>
+
+        <div class="auth-input-group">
+          <input type="password" name="password" id="loginPassword" class="auth-input" placeholder="Password" required autocomplete="current-password" />
+          <button type="button" class="auth-pw-toggle" id="togglePw" aria-label="Toggle password visibility">
+            <i class="far fa-eye" id="togglePwIcon"></i>
+          </button>
+        </div>
+
+        <button type="submit" class="auth-btn">Sign In</button>
+      </form>
+
+      <p class="auth-link">
+        Don't have an account? <a href="{% url 'register' %}">Sign up</a>
+      </p>
     </div>
-  </main>
-{% endblock %}
 
-{% block extra_css %}
-<style>
-  /* BETA Ribbon Styling */
-  .ribbon-beta {
-    position: absolute;
-    top: -2px;
-    left: -47px;
-    z-index: 60;
-    display: inline-block;
-    background: linear-gradient(136deg, #2ecc71 0%, #27ae60 100%);
-    color: #fff;
-    padding: 6px 44px;
-    font-weight: 700;
-    font-size: 0.9rem;
-    border-radius: 6px;
-    transform: rotate(-45deg);
-    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.18);
-    letter-spacing: 0.6px;
-    pointer-events: none;
-    border: 1px solid rgba(0, 0, 0, 0.08);
-    text-transform: uppercase;
-}
-
-  .ribbon-beta::before,
-  .ribbon-beta::after {
-    content: '';
-    position: absolute;
-    width: 12px;
-    height: 12px;
-    background: inherit;
-    bottom: -6px;
-    transform: rotate(45deg);
-    box-shadow: 0 6px 18px rgba(0,0,0,0.12);
-  }
-
-  .ribbon-beta::before { left: 6px; }
-  .ribbon-beta::after { right: 6px; }
-
-  @media (max-width: 992px) {
-    .ribbon-beta { top: 17px; left: -11px; padding: 5px 38px; font-size:0.8rem; }
-  }
-
-  @media (max-width: 576px) {
-    .ribbon-beta { top: -3px; left: -36px; padding: 4px 30px; font-size:0.72rem; }
-  }
-
-  .input-group-outline {
-    position: relative;
-  }
-  
-  .input-group-outline .btn-link {
-    z-index: 3;
-    opacity: 0.7;
-    transition: opacity 0.3s ease;
-  }
-  
-  .input-group-outline .btn-link:hover {
-    opacity: 1;
-  }
-  
-  .input-group-outline .btn-link:focus {
-    box-shadow: none;
-  }
-  
-  .input-group-outline .far {
-    font-size: 1.1rem;
-  }
-  
-  /* Animation for icon change */
-  .far {
-    transition: all 0.2s ease;
-  }
-  
-  /* Add these new styles */
-  @keyframes pulse {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.1); }
-    100% { transform: scale(1); }
-  }
-  
-  .pulse {
-    animation: pulse 0.5s ease;
-  }
-  
-  /* Custom focus style for password field */
-  .input-group-outline input[type="password"]:focus,
-  .input-group-outline input[type="text"]:focus {
-    border-color: #7125be !important;
-    box-shadow: 0 0 0 0.2rem rgba(113, 37, 190, 0.25) !important;
-  }
-</style>
+    <div class="auth-footer">
+      &copy; <script>document.write(new Date().getFullYear())</script> Made with
+      <i class="material-symbols-rounded heart-icon">favorite</i> by
+      <a href="https://www.metricvibes.com" target="_blank">Metric Vibes</a>
+    </div>
+  </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Initialize password field and icon
-    const passwordField = document.querySelector('input[name="password"]');
-    const toggleIcon = document.getElementById('togglePasswordIcon');
-    
-    if (passwordField && toggleIcon) {
-        // Add click event listener to the button
-        toggleIcon.parentElement.addEventListener('click', function(e) {
-            e.preventDefault(); // Prevent form submission
-            
-            // Toggle password visibility
-            if (passwordField.type === 'password') {
-                passwordField.type = 'text';
-                toggleIcon.classList.remove('fa-eye');
-                toggleIcon.classList.add('fa-eye-slash');
-            } else {
-                passwordField.type = 'password';
-                toggleIcon.classList.remove('fa-eye-slash');
-                toggleIcon.classList.add('fa-eye');
-            }
-            
-            // Add ripple effect
-            this.classList.add('pulse');
-            setTimeout(() => this.classList.remove('pulse'), 500);
-        });
-    }
+  var pwField = document.getElementById('loginPassword');
+  var toggleBtn = document.getElementById('togglePw');
+  var icon = document.getElementById('togglePwIcon');
+
+  if (toggleBtn && pwField && icon) {
+    toggleBtn.addEventListener('click', function(e) {
+      e.preventDefault();
+      if (pwField.type === 'password') {
+        pwField.type = 'text';
+        icon.classList.replace('fa-eye', 'fa-eye-slash');
+      } else {
+        pwField.type = 'password';
+        icon.classList.replace('fa-eye-slash', 'fa-eye');
+      }
+    });
+  }
 });
 </script>
 {% endblock %}

@@ -4,155 +4,154 @@
 {% block title %}Verify OTP | {{ block.super }}{% endblock %}
 
 {% block content %}
-<main class="main-content mt-0 ps">
-    <div class="page-header align-items-start min-vh-100" style="background-image: url('{% static 'user_querySafe/img/curved-images/curved14.jpg' %}');">
-        <span class="mask bg-gradient-dark opacity-6"></span>
-        <div class="container my-auto">
-            <div class="row">
-                <div class="col-lg-4 col-md-8 col-12 mx-auto">
-                    <div class="card z-index-0 fadeIn3 fadeInBottom">
+<div class="auth-page">
+  <div class="auth-bg-mesh"></div>
+  <div class="auth-bg-grid"></div>
 
-                        <div class="card-header p-0 position-relative mt-n4 mx-3 z-index-2">
-                            <div class="bg-gradient-primary shadow-primary border-radius-lg py-3 pe-1">
-                                <h4 class="text-white font-weight-bolder text-center mt-2 mb-0">Verify Your Email</h4>
-                                <p class="text-white text-center mb-0">Enter the OTP sent to {{ request.session.registration_data.email }}</p>
-                            </div>
-                        </div>
-                        <div class="card-body">
-                            <form role="form" method="POST">
-                                {% csrf_token %}
-                                <div class="input-group input-group-outline mb-3">
-                                    {{ form.otp }}
-                                </div>
-                                <div class="text-center">
-                                    <button type="submit" class="btn bg-gradient-primary w-100 my-4 mb-2">
-                                        <i class="material-symbols-rounded me-2">verified</i>
-                                        Verify OTP
-                                    </button>
-                                </div>
-                                <div class="text-center">
-                                    <p class="mb-0 text-sm">
-                                        Didn't receive OTP? 
-                                        <a href="javascript:void(0);" id="resendOTP" class="text-primary text-gradient font-weight-bold">
-                                            Resend OTP
-                                        </a>
-                                        <span id="timer" class="text-sm text-muted ms-1"></span>
-                                    </p>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-            </div>
+  <div class="d-flex flex-column align-items-center justify-content-center" style="min-height: 100vh; padding: 2rem 0;">
+    <div class="auth-card" style="max-width: 400px;">
+
+      <a href="https://querysafe.in/">
+        <img src="{% static 'user_querySafe/img/dark-query-safe-logo.png' %}" alt="QuerySafe" class="auth-logo" />
+      </a>
+
+      <h1 class="auth-title">Verify Your Email</h1>
+      <p class="auth-subtitle">Enter the 6-digit code sent to your email</p>
+
+      <!-- Django messages as inline alerts -->
+      {% if messages %}
+        {% for message in messages %}
+          <div class="auth-alert auth-alert-{% if message.tags == 'error' %}error{% elif message.tags == 'warning' %}warning{% elif message.tags == 'info' %}info{% else %}success{% endif %}">
+            <i class="material-symbols-rounded" style="font-size:1.1rem;">
+              {% if message.tags == 'error' %}error{% elif message.tags == 'warning' %}warning{% elif message.tags == 'info' %}info{% else %}check_circle{% endif %}
+            </i>
+            <span>{{ message }}</span>
+            <button class="close-btn" onclick="this.parentElement.remove()">&times;</button>
+          </div>
+        {% endfor %}
+      {% endif %}
+
+      <form method="POST" id="otpForm">
+        {% csrf_token %}
+        <div class="auth-input-group">
+          {{ form.otp }}
         </div>
+        <button type="submit" class="auth-btn">
+          <i class="material-symbols-rounded" style="font-size:1.1rem; vertical-align: middle; margin-right: 6px;">verified</i>
+          Verify OTP
+        </button>
+      </form>
+
+      <div style="text-align: center; margin-top: 1.25rem;">
+        <p style="color: rgba(255,255,255,0.45); font-size: 0.85rem; margin: 0;">
+          Didn't receive the code?
+          <a href="javascript:void(0);" id="resendOTP" class="auth-resend-link">Resend OTP</a>
+          <span id="timer" class="auth-timer"></span>
+        </p>
+      </div>
     </div>
-</main>
 
+    <div class="auth-footer">
+      &copy; <script>document.write(new Date().getFullYear())</script> Made with
+      <i class="material-symbols-rounded heart-icon">favorite</i> by
+      <a href="https://www.metricvibes.com" target="_blank">Metric Vibes</a>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
 <style>
-.bg-gradient-primary {
-    background: linear-gradient(45deg, #7125be, #954ddb) !important;
-}
-
-.text-primary, .text-primary.text-gradient {
-    background: linear-gradient(45deg, #7125be, #954ddb);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-}
-
-.alert {
-    border: 0;
-    border-radius: 0.5rem;
-}
-
-.alert.alert-success {
-    background: linear-gradient(45deg, #2dcecc, #2dce89);
-}
-
-.alert.alert-danger {
-    background: linear-gradient(45deg, #f5365c, #f56036);
-}
-
-#resendOTP {
+  /* Style the Django form OTP input to match our dark theme */
+  #otpForm input[type="text"],
+  #otpForm input[type="number"],
+  #otpForm .form-control {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    border-radius: 12px;
+    color: #e8e8f0;
+    font-size: 1.5rem;
+    font-family: 'Inter', sans-serif;
+    text-align: center;
+    letter-spacing: 0.5em;
+    font-weight: 600;
     transition: all 0.3s ease;
-    cursor: pointer;
-}
+    outline: none;
+  }
 
-#resendOTP.disabled {
-    opacity: 0.5;
-    pointer-events: none;
-}
+  #otpForm input:focus,
+  #otpForm .form-control:focus {
+    border-color: rgba(113, 37, 190, 0.6);
+    box-shadow: 0 0 0 3px rgba(113, 37, 190, 0.15), 0 0 20px rgba(113, 37, 190, 0.10);
+    background: rgba(255, 255, 255, 0.08);
+  }
 
-@keyframes pulse {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.05); }
-    100% { transform: scale(1); }
-}
-
-#resendOTP:not(.disabled):hover {
-    animation: pulse 1s infinite;
-}
+  #otpForm input::placeholder,
+  #otpForm .form-control::placeholder {
+    color: rgba(255, 255, 255, 0.30);
+    letter-spacing: 0.1em;
+    font-size: 0.9rem;
+    font-weight: 400;
+  }
 </style>
+{% endblock %}
 
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const resendBtn = document.getElementById('resendOTP');
-    const timerSpan = document.getElementById('timer');
-    let timeLeft = 30;
-    let timerId = null;
-    let isResending = false; // Add flag to prevent duplicate requests
+  var resendBtn = document.getElementById('resendOTP');
+  var timerSpan = document.getElementById('timer');
+  var timeLeft = 30;
+  var timerId = null;
+  var isResending = false;
 
-    function updateTimer() {
-        if (timeLeft > 0) {
-            timerSpan.textContent = `(${timeLeft}s)`;
-            resendBtn.classList.add('disabled');
-            timeLeft--;
-        } else {
-            timerSpan.textContent = '';
-            resendBtn.classList.remove('disabled');
-            clearInterval(timerId);
-        }
+  function updateTimer() {
+    if (timeLeft > 0) {
+      timerSpan.textContent = '(' + timeLeft + 's)';
+      resendBtn.classList.add('disabled');
+      timeLeft--;
+    } else {
+      timerSpan.textContent = '';
+      resendBtn.classList.remove('disabled');
+      clearInterval(timerId);
     }
+  }
 
-    // Initialize timer
-    updateTimer();
-    timerId = setInterval(updateTimer, 1000);
+  updateTimer();
+  timerId = setInterval(updateTimer, 1000);
 
-    // Handle resend click with debounce
-    resendBtn.addEventListener('click', function(e) {
-        e.preventDefault(); // Prevent any default action
-        
-        if (!resendBtn.classList.contains('disabled') && !isResending) {
-            isResending = true; // Set flag to prevent duplicate requests
-            
-            fetch('{% url "resend_otp" %}', {
-                method: 'POST',
-                headers: {
-                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    // Reset timer
-                    timeLeft = 30;
-                    updateTimer();
-                    timerId = setInterval(updateTimer, 1000);
-                    showToast('success', data.message);
-                } else {
-                    showToast('error', data.message);
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                showToast('error', 'Failed to send OTP. Please try again.');
-            })
-            .finally(() => {
-                isResending = false; // Reset flag after request completes
-            });
+  resendBtn.addEventListener('click', function(e) {
+    e.preventDefault();
+    if (!resendBtn.classList.contains('disabled') && !isResending) {
+      isResending = true;
+      fetch('{% url "resend_otp" %}', {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
         }
-    });
+      })
+      .then(function(response) { return response.json(); })
+      .then(function(data) {
+        if (data.success) {
+          timeLeft = 30;
+          updateTimer();
+          timerId = setInterval(updateTimer, 1000);
+          showToast('success', data.message);
+        } else {
+          showToast('error', data.message);
+        }
+      })
+      .catch(function(error) {
+        console.error('Error:', error);
+        showToast('error', 'Failed to send OTP. Please try again.');
+      })
+      .finally(function() {
+        isResending = false;
+      });
+    }
+  });
 });
 </script>
-{% endblock %}
 {% endblock %}

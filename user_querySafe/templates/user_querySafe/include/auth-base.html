@@ -4,7 +4,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
-    
+
     <!-- Primary Meta Tags -->
     <title>
       {% block title %}
@@ -12,13 +12,13 @@
       {% endblock %}
     </title>
 
-    
+
     <meta name="title" content="QuerySafe - Privacy-Compliant AI Chatbot Platform">
     <meta name="description" content="Build customized AI chatbots with enterprise-grade privacy compliance. GDPR-compliant, secure data handling, and seamless integration for your business needs.">
-    
+
     <!-- Keywords -->
     <meta name="keywords" content="privacy compliant chatbot, AI chatbot, GDPR compliant AI, custom chatbot, secure chatbot, privacy focused AI, enterprise chatbot, data privacy, QuerySafe">
-    
+
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://querysafe.metricvibes.com/">
@@ -41,144 +41,83 @@
 
     <link rel="icon" type="image/png" href="{% static 'user_querySafe/img/favicon.png' %}" />
 
-
-    <!-- Fonts and icons -->
+    <!-- Fonts -->
     <link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=Inter:300,400,500,600,700,900" />
-
-    <!-- CSS Files -->
-    <link rel="stylesheet" href="{% static 'user_querySafe/css/material-dashboard.min.css' %}" />
-    <link rel="stylesheet" href="{% static 'user_querySafe/css/nucleo-icons.css' %}" />
-    <link rel="stylesheet" href="{% static 'user_querySafe/css/nucleo-svg.css' %}" />
-    <link rel="stylesheet" href="{% static 'user_querySafe/css/public.css' %}">
-    <link rel="stylesheet" href="{% static 'user_querySafe/css/footer.css' %}">
 
     <!-- Material Icons -->
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0" />
 
+    <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" />
+
+    <!-- Auth CSS -->
+    <link rel="stylesheet" href="{% static 'user_querySafe/css/auth.css' %}" />
+
     {% block extra_css %}
     {% endblock %}
   </head>
 
-  <body class="g-sidenav-show">
-    <!-- Main Content -->
-    <main class="main-content position-relative max-height-vh-100 h-100 border-radius-lg">
-      {% block content %}
-      {% endblock %}
-    </main>
+  <body>
+    {% block content %}
+    {% endblock %}
 
     <!-- Toast Container -->
-    <div class="position-fixed top-1 end-1 z-index-3">
-      <div class="toast fade hide p-2 bg-white" role="alert" aria-live="assertive" id="successToast" aria-atomic="true">
-        <div class="toast-header border-0">
-          <i class="material-symbols-rounded text-success me-2">check_circle</i>
-          <span class="me-auto font-weight-bold">Success</span>
-          <small class="text-body">Just now</small>
-          <i class="fas fa-times text-md ms-3 cursor-pointer" data-bs-dismiss="toast" aria-label="Close"></i>
-        </div>
-        <hr class="horizontal dark m-0">
-        <div class="toast-body" id="successToastMessage"></div>
-      </div>
-
-      <div class="toast fade hide p-2 mt-2 bg-danger" role="alert" aria-live="assertive" id="errorToast" aria-atomic="true">
-        <div class="toast-header border-0">
-          <i class="material-symbols-rounded text-white me-2">error</i>
-          <span class="me-auto text-white font-weight-bold">Error</span>
-          <small class="text-white">Just now</small>
-          <i class="fas fa-times text-white ms-3 cursor-pointer" data-bs-dismiss="toast" aria-label="Close"></i>
-        </div>
-        <hr class="horizontal light m-0">
-        <div class="toast-body text-white" id="errorToastMessage" style="background: rgba(0,0,0,0.1);"></div>
-      </div>
-    </div>
+    <div id="authToastContainer" class="auth-toast-container"></div>
 
     <!-- Core JS Files -->
     <script src="{% static 'user_querySafe/js/core/popper.min.js' %}"></script>
     <script src="{% static 'user_querySafe/js/core/bootstrap.min.js' %}"></script>
-    <script src="{% static 'user_querySafe/js/material-dashboard.min.js' %}"></script>
-    <!-- <script src="{% static 'user_querySafe/js/public.js' %}"></script> -->
 
     {% block extra_js %}
     {% endblock %}
 
-    <style>
-      .toast {
-        font-size: 0.875rem;
-        border-radius: 0.75rem;
-        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
-      }
-      
-      .toast .toast-header {
-        padding: 0.5rem 0.75rem;
-        background-color: transparent;
-      }
-
-      .toast .toast-body {
-        padding: 0.75rem;
-      }
-
-      .toast .material-symbols-rounded {
-        font-size: 1.25rem;
-        vertical-align: middle;
-      }
-
-      .cursor-pointer {
-        cursor: pointer;
-      }
-
-      .z-index-3 {
-        z-index: 1060;
-      }
-
-      .top-1 {
-        top: 1rem;
-      }
-
-      .end-1 {
-        right: 1rem;
-      }
-
-      /* Error Toast Styling */
-      .toast.bg-danger {
-        background: #f44335 !important;
-      }
-
-      .toast.bg-danger .toast-body {
-        color: #fff !important;
-        font-weight: 500;
-        text-shadow: 0 1px 1px rgba(0,0,0,0.1);
-      }
-
-      .toast.bg-danger .toast-header {
-        color: #fff;
-        border-bottom: 1px solid rgba(255,255,255,0.1);
-      }
-
-      .toast.bg-danger .horizontal.light {
-        background-color: rgba(255,255,255,0.1);
-      }
-    </style>
-
     <script>
+      /**
+       * Show a toast notification (success / error / warning)
+       */
       function showToast(type, message) {
-        const toast = document.getElementById(type + 'Toast');
-        const toastMessage = document.getElementById(type + 'ToastMessage');
-        toastMessage.textContent = message;
-        
-        const bsToast = new bootstrap.Toast(toast, {
-          delay: 7000,
-          animation: true
+        var container = document.getElementById('authToastContainer');
+        if (!container) return;
+
+        var iconMap = {
+          success: 'check_circle',
+          error: 'error',
+          warning: 'warning'
+        };
+
+        var toast = document.createElement('div');
+        toast.className = 'auth-toast auth-toast-' + type;
+        toast.innerHTML =
+          '<i class="material-symbols-rounded" style="font-size:1.2rem;">' + (iconMap[type] || 'info') + '</i>' +
+          '<span>' + message + '</span>' +
+          '<button class="toast-close" aria-label="Close">&times;</button>';
+
+        container.appendChild(toast);
+
+        // Close button
+        toast.querySelector('.toast-close').addEventListener('click', function() {
+          dismissToast(toast);
         });
-        
-        bsToast.show();
+
+        // Auto-dismiss after 6s
+        setTimeout(function() {
+          dismissToast(toast);
+        }, 6000);
       }
 
-      // Handle Django messages
+      function dismissToast(el) {
+        if (!el || el.dataset.dismissed) return;
+        el.dataset.dismissed = 'true';
+        el.style.animation = 'toastSlideOut 0.3s ease-in forwards';
+        setTimeout(function() { el.remove(); }, 300);
+      }
+
+      // Render Django messages as toasts
       document.addEventListener('DOMContentLoaded', function() {
         {% if messages %}
           {% for message in messages %}
             showToast(
-              '{% if message.tags == "success" %}success{% else %}error{% endif %}',
+              '{% if message.tags == "success" %}success{% elif message.tags == "warning" %}warning{% else %}error{% endif %}',
               '{{ message|escapejs }}'
             );
           {% endfor %}
