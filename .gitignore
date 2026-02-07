@@ -3,6 +3,7 @@
 .env.*
 *.pem
 *.key
+env-vars.yaml
 
 # ── Python ──
 __pycache__/

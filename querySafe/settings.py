@@ -49,10 +49,12 @@ GOOGLE_REDIRECT_URI = os.getenv('GOOGLE_REDIRECT_URI')
 # Vertex AI settings
 PROJECT_ID = os.getenv('PROJECT_ID')
 REGION = os.getenv('REGION')
+# Gemini API location — can differ from Cloud Run region if models aren't available locally
+GEMINI_LOCATION = os.getenv('GEMINI_LOCATION', 'us-central1')
 
 # Gemini model names (change here to upgrade models globally)
-GEMINI_CHAT_MODEL = os.getenv('GEMINI_CHAT_MODEL', 'gemini-2.0-flash-001')
-GEMINI_VISION_MODEL = os.getenv('GEMINI_VISION_MODEL', 'gemini-2.0-flash-001')
+GEMINI_CHAT_MODEL = os.getenv('GEMINI_CHAT_MODEL', 'gemini-2.0-flash')
+GEMINI_VISION_MODEL = os.getenv('GEMINI_VISION_MODEL', 'gemini-2.0-flash')
 
 # Paths for FAISS indices and metadata
 INDEX_DIR = os.path.join(DATA_DIR, "documents", "vector_index")

@@ -51,8 +51,8 @@ for folder in [PDF_DIR, IMAGE_DIR, TEXT_DIR, CHUNK_DIR, INDEX_DIR, META_DIR]:
 
 # ── Gemini client ─────────────────────────────────────────────────────
 PROJECT_ID = settings.PROJECT_ID
-REGION = settings.REGION
-client = genai.Client(vertexai=True, project=PROJECT_ID, location=REGION)
+GEMINI_LOCATION = settings.GEMINI_LOCATION  # May differ from Cloud Run region
+client = genai.Client(vertexai=True, project=PROJECT_ID, location=GEMINI_LOCATION)
 
 # ── File type definitions ─────────────────────────────────────────────
 IMAGE_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.gif', '.bmp'}

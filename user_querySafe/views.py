@@ -27,10 +27,13 @@ from django.core.cache import cache
 from django.urls import reverse
 from django.db import models
 import time  # Import the time module
+import logging
 import requests as http_requests  # renamed to avoid conflict with django request
 
+logger = logging.getLogger(__name__)
+
 # Initialize Gemini client (embedding model loaded lazily via singleton)
-client = genai.Client(vertexai=True, project=settings.PROJECT_ID, location=settings.REGION)
+client = genai.Client(vertexai=True, project=settings.PROJECT_ID, location=settings.GEMINI_LOCATION)
 
 # OTP Genration 
 def generate_otp():
@@ -234,14 +237,16 @@ def google_login_redirect(request):
     return redirect(auth_url)
 
 
-@redirect_authenticated_user
 def google_callback(request):
     """Handle the callback from Google OAuth."""
     # Validate state to prevent CSRF
     state = request.GET.get('state')
     stored_state = request.session.pop('google_oauth_state', None)
 
+    logger.info(f"Google OAuth callback: state={'present' if state else 'missing'}, stored_state={'present' if stored_state else 'missing'}")
+
     if not state or state != stored_state:
+        logger.error(f"Google OAuth state mismatch: received={state}, stored={stored_state}")
         messages.error(request, 'Invalid authentication state. Please try again.')
         return redirect('login')
 
@@ -249,7 +254,8 @@ def google_callback(request):
     error = request.GET.get('error')
 
     if error:
-        messages.error(request, f'Google sign-in was cancelled or failed.')
+        logger.error(f"Google OAuth error: {error}")
+        messages.error(request, 'Google sign-in was cancelled or failed.')
         return redirect('login')
 
     if not code:
@@ -264,9 +270,10 @@ def google_callback(request):
             'client_secret': settings.GOOGLE_CLIENT_SECRET,
             'redirect_uri': settings.GOOGLE_REDIRECT_URI,
             'grant_type': 'authorization_code',
-        }, timeout=10)
+        }, timeout=15)
 
         if token_response.status_code != 200:
+            logger.error(f"Google token exchange failed: {token_response.status_code} - {token_response.text}")
             messages.error(request, 'Failed to authenticate with Google. Please try again.')
             return redirect('login')
 
@@ -274,10 +281,12 @@ def google_callback(request):
         access_token = tokens.get('access_token')
 
         if not access_token:
+            logger.error(f"No access_token in Google response: {tokens}")
             messages.error(request, 'Failed to get access token from Google.')
             return redirect('login')
 
-    except Exception:
+    except Exception as e:
+        logger.error(f"Google token exchange exception: {e}")
         messages.error(request, 'Could not connect to Google. Please try again.')
         return redirect('login')
 
@@ -286,10 +295,11 @@ def google_callback(request):
         userinfo_response = http_requests.get(
             GOOGLE_USERINFO_URL,
             headers={'Authorization': f'Bearer {access_token}'},
-            timeout=10,
+            timeout=15,
         )
 
         if userinfo_response.status_code != 200:
+            logger.error(f"Google userinfo failed: {userinfo_response.status_code} - {userinfo_response.text}")
             messages.error(request, 'Failed to fetch your Google profile.')
             return redirect('login')
 
@@ -306,31 +316,42 @@ def google_callback(request):
             messages.error(request, 'Your Google email is not verified.')
             return redirect('login')
 
-    except Exception:
+    except Exception as e:
+        logger.error(f"Google userinfo exception: {e}")
         messages.error(request, 'Error retrieving your Google profile.')
         return redirect('login')
 
     # Find or create user
     try:
-        user = User.objects.get(email=email)
-        # Existing user — check if active
-        if not user.is_active:
-            # Auto-activate since Google has verified their email
-            user.is_active = True
-            user.registration_status = 'activated'
-            user.activated_at = timezone.now()
+        try:
+            user = User.objects.get(email=email)
+            logger.info(f"Google OAuth: existing user found for {email}")
+            # Existing user — check if active
+            if not user.is_active:
+                # Auto-activate since Google has verified their email
+                user.is_active = True
+                user.registration_status = 'activated'
+                user.activated_at = timezone.now()
+                user.save()
+        except User.DoesNotExist:
+            # Create new user — auto-activated (Google verified email)
+            logger.info(f"Google OAuth: creating new user for {email}")
+            user = User(
+                name=name or email.split('@')[0],
+                email=email,
+                is_active=True,
+                registration_status='activated',
+                activated_at=timezone.now(),
+            )
+            # Set an unusable password for Google-only users (field is non-nullable)
+            from django.contrib.auth.hashers import make_password
+            user.password = make_password(None)  # Stores a hash that can never be matched
             user.save()
-    except User.DoesNotExist:
-        # Create new user — auto-activated (Google verified email)
-        user = User(
-            name=name or email.split('@')[0],
-            email=email,
-            is_active=True,
-            registration_status='activated',
-            activated_at=timezone.now(),
-        )
-        user.set_password(None)  # No password for Google users
-        user.save()
+            logger.info(f"Google OAuth: new user created with id {user.user_id}")
+    except Exception as e:
+        logger.error(f"Google OAuth user creation error: {e}")
+        messages.error(request, 'Failed to create your account. Please try again.')
+        return redirect('login')
 
     # Set session
     request.session['user_id'] = user.user_id
