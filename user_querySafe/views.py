@@ -368,6 +368,11 @@ def google_callback(request):
     else:
         request.session['active_plan'] = "No active plan"
 
+    # Track login for engagement features
+    request.session['previous_login'] = user.last_login.isoformat() if user.last_login else None
+    user.last_login = timezone.now()
+    user.save(update_fields=['last_login'])
+
     messages.success(request, f'Welcome, {user.name}!')
     return redirect('dashboard')
 
@@ -423,6 +428,11 @@ def login_view(request):
                         request.session['active_plan'] = active_plan.plan_name
                     else:
                         request.session['active_plan'] = "No active plan"
+
+                    # Track login for engagement features
+                    request.session['previous_login'] = user.last_login.isoformat() if user.last_login else None
+                    user.last_login = timezone.now()
+                    user.save(update_fields=['last_login'])
 
                     messages.success(request, f'Welcome back, {user.name}!')
                     return redirect('dashboard')

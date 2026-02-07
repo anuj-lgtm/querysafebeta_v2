@@ -1,0 +1,27 @@
+{% if not has_active_plan %}
+<div class="row mb-4">
+  <div class="col-12">
+    <div class="card border-0 shadow-sm overflow-hidden promo-banner-card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+      <div class="card-body py-3 px-4">
+        <div class="row align-items-center">
+          <div class="col-auto d-none d-md-block">
+            <div class="d-flex align-items-center justify-content-center bg-white rounded-circle" style="width:48px;height:48px;">
+              <i class="material-symbols-rounded" style="font-size:1.5rem;color:#764ba2;">local_offer</i>
+            </div>
+          </div>
+          <div class="col">
+            <h6 class="text-white mb-1" style="font-size:0.95rem;">Limited Time: Get Started with QuerySafe</h6>
+            <p class="text-white mb-0" style="opacity:0.8;font-size:0.8rem;">Build your first AI chatbot in under 5 minutes. Choose a plan and start converting visitors into customers.</p>
+          </div>
+          <div class="col-12 col-md-auto mt-2 mt-md-0">
+            <a href="{% url 'subscriptions' %}" class="btn btn-white btn-sm mb-0 shadow-sm">
+              <i class="material-symbols-rounded me-1" style="font-size:1rem;">rocket_launch</i>
+              View Plans
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}

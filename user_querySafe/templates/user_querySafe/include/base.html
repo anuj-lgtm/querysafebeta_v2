@@ -361,6 +361,27 @@
                 );
             {% endfor %}
         {% endif %}
+
+        // ── Milestone achievement toasts ──
+        {% if new_milestones %}
+        var milestoneMessages = {
+          '10_conversations': '🎉 Your chatbots just crossed 10 conversations!',
+          '50_conversations': '🔥 50 conversations reached — your bots are getting popular!',
+          '100_conversations': '🏆 Amazing! 100 conversations milestone unlocked!',
+          '500_conversations': '⭐ Incredible — 500 conversations! Your chatbots are stars!',
+          '1000_conversations': '🚀 1,000 conversations! You are a QuerySafe power user!',
+          '10_messages': '🤖 Your chatbots generated their first 10 responses!',
+          '50_messages': '💬 50 AI responses and counting!',
+          '100_messages': '🎯 100 AI responses — your bots are working hard!',
+          '500_messages': '🌟 500 AI responses milestone!',
+          '1000_messages': '🏅 1,000 AI responses! Incredible engagement!'
+        };
+        {% for milestone in new_milestones %}
+        setTimeout(function() {
+          showToast('success', milestoneMessages['{{ milestone }}'] || 'New milestone reached!');
+        }, {{ forloop.counter }} * 2500);
+        {% endfor %}
+        {% endif %}
       });
     </script>
   </body>

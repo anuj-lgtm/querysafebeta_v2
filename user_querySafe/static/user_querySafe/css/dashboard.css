@@ -258,3 +258,40 @@
   border-top: 1px solid #f0f2f5;
   background: transparent;
 }
+
+/* ── Staggered entrance animations ── */
+@keyframes cardSlideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.dashboard-stat-card {
+  animation: cardSlideUp 0.5s ease-out backwards;
+}
+
+.row > .col-xl-3:nth-child(1) .dashboard-stat-card { animation-delay: 0.1s; }
+.row > .col-xl-3:nth-child(2) .dashboard-stat-card { animation-delay: 0.2s; }
+.row > .col-xl-3:nth-child(3) .dashboard-stat-card { animation-delay: 0.3s; }
+.row > .col-xl-3:nth-child(4) .dashboard-stat-card { animation-delay: 0.4s; }
+
+/* ── Notification badge pulse ── */
+.badge.bg-danger {
+  animation: badgePulse 2s ease-in-out infinite;
+}
+
+@keyframes badgePulse {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.15); }
+}
+
+/* ── Promo banner entrance ── */
+.promo-banner-card {
+  animation: cardSlideUp 0.6s ease-out backwards;
+  animation-delay: 0.2s;
+}
+
+.promo-banner-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.25) !important;
+  transition: all 0.3s ease;
+}

@@ -30,7 +30,11 @@ Dashboard {{ block.super }}
           <!-- User Info -->
           <div class="col">
             <div class="d-flex align-items-center mb-2">
-              <h3 class="mb-0 text-white me-3">Welcome {{ user.name }}!</h3>
+              {% if is_first_visit %}
+              <h3 class="mb-0 text-white me-3">Welcome to QuerySafe, {{ engagement_first_name }}!</h3>
+              {% else %}
+              <h3 class="mb-0 text-white me-3">{{ engagement_first_name }} returns!</h3>
+              {% endif %}
               <span class="badge bg-white text-primary px-3 py-2">
                 <i class="material-symbols-rounded align-middle me-1">workspace_premium</i>
                 {{ request.session.active_plan }}
@@ -51,6 +55,23 @@ Dashboard {{ block.super }}
                 <span>Member since {{ user.created_at|date:'F j, Y' }}</span>
               </div>
             </div>
+
+            {% if conversations_today > 0 or messages_today > 0 %}
+            <div class="d-flex flex-wrap gap-4 text-white-50 fs-sm mt-2">
+              {% if conversations_today > 0 %}
+              <div class="d-flex align-items-center">
+                <i class="material-symbols-rounded me-2 fs-5">trending_up</i>
+                <span>Your users had <strong class="text-white">{{ conversations_today }}</strong> conversation{{ conversations_today|pluralize }} today</span>
+              </div>
+              {% endif %}
+              {% if messages_today > 0 %}
+              <div class="d-flex align-items-center">
+                <i class="material-symbols-rounded me-2 fs-5">chat_bubble</i>
+                <span><strong class="text-white">{{ messages_today }}</strong> AI response{{ messages_today|pluralize }} generated today</span>
+              </div>
+              {% endif %}
+            </div>
+            {% endif %}
           </div>
 
           <!-- Action Button -->
@@ -66,6 +87,8 @@ Dashboard {{ block.super }}
   </div>
 </div>
 
+{% include 'user_querySafe/include/_promo_banner.html' %}
+
 <div class="row mb-4">
   <div class="col-xl-3 col-sm-6 mb-xl-0 mb-4">
     <a href="{% url 'my_chatbots' %}" class="text-decoration-none">
@@ -77,7 +100,7 @@ Dashboard {{ block.super }}
           </div>
           <div class="text-end pt-1">
             <p class="text-sm mb-0 text-capitalize">Total Chatbots</p>
-            <h4 class="mb-0">{{ total_chatbots }}</h4>
+            <h4 class="mb-0 countup-target" data-target="{{ total_chatbots }}">0</h4>
           </div>
         </div>
         <hr class="dark horizontal my-0" />
@@ -101,7 +124,7 @@ Dashboard {{ block.super }}
           </div>
           <div class="text-end pt-1">
             <p class="text-sm mb-0 text-capitalize">Total Conversations</p>
-            <h4 class="mb-0">{{ total_conversations }}</h4>
+            <h4 class="mb-0 countup-target" data-target="{{ total_conversations }}">0</h4>
           </div>
         </div>
         <hr class="dark horizontal my-0" />
@@ -124,7 +147,7 @@ Dashboard {{ block.super }}
           </div>
           <div class="text-end pt-1">
             <p class="text-sm mb-0 text-capitalize">Total Documents</p>
-            <h4 class="mb-0">{{ total_documents }}</h4>
+            <h4 class="mb-0 countup-target" data-target="{{ total_documents }}">0</h4>
           </div>
         </div>
         <hr class="dark horizontal my-0" />
@@ -148,7 +171,7 @@ Dashboard {{ block.super }}
           </div>
           <div class="text-end pt-1">
             <p class="text-sm mb-0 text-capitalize">Total Messages</p>
-            <h4 class="mb-0">{{ total_messages }}</h4>
+            <h4 class="mb-0 countup-target" data-target="{{ total_messages }}">0</h4>
           </div>
         </div>
         <hr class="dark horizontal my-0" />
@@ -630,4 +653,24 @@ Dashboard {{ block.super }}
     </div>
   </div>
 </div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'user_querySafe/js/plugins/countup.min.js' %}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('.countup-target').forEach(function(el) {
+    var target = parseInt(el.dataset.target) || 0;
+    if (target === 0) { el.textContent = '0'; return; }
+    if (typeof countUp !== 'undefined' && countUp.CountUp) {
+      new countUp.CountUp(el, target, { duration: 1.5, useEasing: true, useGrouping: true }).start();
+    } else if (typeof CountUp !== 'undefined') {
+      new CountUp(el, 0, target, 0, 1.5, { useEasing: true, useGrouping: true }).start();
+    } else {
+      el.textContent = target;
+    }
+  });
+});
+</script>
 {% endblock %}

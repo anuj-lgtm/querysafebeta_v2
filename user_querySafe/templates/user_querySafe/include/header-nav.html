@@ -26,55 +26,64 @@
           </a>
         </li>
 
-        <!-- <li class="nav-item dropdown pe-3 d-flex align-items-center">
-          <a href="javascript:;" class="nav-link text-body p-0" id="dropdownMenuButton" data-bs-toggle="dropdown" aria-expanded="false"><i class="material-symbols-rounded">notifications</i></a>
-          <ul class="dropdown-menu dropdown-menu-end px-2 py-3 me-sm-n4" aria-labelledby="dropdownMenuButton">
+        <li class="nav-item dropdown pe-3 d-flex align-items-center">
+          <a href="javascript:;" class="nav-link text-body p-0 position-relative" id="dropdownMenuButton" data-bs-toggle="dropdown" aria-expanded="false">
+            <i class="material-symbols-rounded">notifications</i>
+            {% if conversations_today > 0 %}
+            <span class="position-absolute translate-middle badge rounded-pill bg-danger" style="font-size:0.55rem; top:2px; right:-6px; padding:3px 5px; min-width:16px;">
+              {{ conversations_today }}
+            </span>
+            {% endif %}
+          </a>
+          <ul class="dropdown-menu dropdown-menu-end px-2 py-3 me-sm-n4" aria-labelledby="dropdownMenuButton" style="min-width:300px;">
+            {% if conversations_today > 0 %}
             <li class="mb-2">
-              <a class="dropdown-item border-radius-md" href="javascript:;">
+              <a class="dropdown-item border-radius-md" href="{% url 'conversations' %}">
                 <div class="d-flex py-1">
-                  <div class="my-auto">
-                    {% comment %} <img src="../assets/img/team-2.jpg" class="avatar avatar-sm me-3" /> {% endcomment %}
+                  <div class="avatar avatar-sm bg-gradient-primary me-3 my-auto d-flex align-items-center justify-content-center rounded-circle">
+                    <i class="material-symbols-rounded text-white" style="font-size:1rem;">chat</i>
                   </div>
                   <div class="d-flex flex-column justify-content-center">
-                    <h6 class="text-sm font-weight-normal mb-1"><span class="font-weight-bold">New message</span> from Laur</h6>
+                    <h6 class="text-sm font-weight-normal mb-1">
+                      <span class="font-weight-bold">{{ conversations_today }}</span> new conversation{{ conversations_today|pluralize }} today
+                    </h6>
                     <p class="text-xs text-secondary mb-0">
-                      <i class="fa fa-clock me-1"></i>
-                      13 minutes ago
+                      <i class="fa fa-clock me-1"></i> Today
                     </p>
                   </div>
                 </div>
               </a>
             </li>
+            {% endif %}
+            {% if messages_today > 0 %}
+            <li class="mb-2">
+              <a class="dropdown-item border-radius-md" href="{% url 'analytics' %}">
+                <div class="d-flex py-1">
+                  <div class="avatar avatar-sm bg-gradient-success me-3 my-auto d-flex align-items-center justify-content-center rounded-circle">
+                    <i class="material-symbols-rounded text-white" style="font-size:1rem;">smart_toy</i>
+                  </div>
+                  <div class="d-flex flex-column justify-content-center">
+                    <h6 class="text-sm font-weight-normal mb-1">
+                      <span class="font-weight-bold">{{ messages_today }}</span> AI response{{ messages_today|pluralize }} generated
+                    </h6>
+                    <p class="text-xs text-secondary mb-0">
+                      <i class="fa fa-clock me-1"></i> Today
+                    </p>
+                  </div>
+                </div>
+              </a>
+            </li>
+            {% endif %}
+            {% if not conversations_today and not messages_today %}
             <li>
-              <a class="dropdown-item border-radius-md" href="javascript:;">
-                <div class="d-flex py-1">
-                  <div class="avatar avatar-sm bg-gradient-secondary me-3 my-auto">
-                    <svg width="12px" height="12px" viewBox="0 0 43 36" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
-                      <title>credit-card</title>
-                      <g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
-                        <g transform="translate(-2169.000000, -745.000000)" fill="#FFFFFF" fill-rule="nonzero">
-                          <g transform="translate(1716.000000, 291.000000)">
-                            <g transform="translate(453.000000, 454.000000)">
-                              <path class="color-background" d="M43,10.7482083 L43,3.58333333 C43,1.60354167 41.3964583,0 39.4166667,0 L3.58333333,0 C1.60354167,0 0,1.60354167 0,3.58333333 L0,10.7482083 L43,10.7482083 Z" opacity="0.593633743"></path>
-                              <path class="color-background" d="M0,16.125 L0,32.25 C0,34.2297917 1.60354167,35.8333333 3.58333333,35.8333333 L39.4166667,35.8333333 C41.3964583,35.8333333 43,34.2297917 43,32.25 L43,16.125 L0,16.125 Z M19.7083333,26.875 L7.16666667,26.875 L7.16666667,23.2916667 L19.7083333,23.2916667 L19.7083333,26.875 Z M35.8333333,26.875 L28.6666667,26.875 L28.6666667,23.2916667 L35.8333333,23.2916667 L35.8333333,26.875 Z"></path>
-                            </g>
-                          </g>
-                        </g>
-                      </g>
-                    </svg>
-                  </div>
-                  <div class="d-flex flex-column justify-content-center">
-                    <h6 class="text-sm font-weight-normal mb-1">Payment successfully completed</h6>
-                    <p class="text-xs text-secondary mb-0">
-                      <i class="fa fa-clock me-1"></i>
-                      2 days
-                    </p>
-                  </div>
-                </div>
-              </a>
+              <div class="dropdown-item border-radius-md text-center py-3">
+                <i class="material-symbols-rounded text-secondary mb-1" style="font-size:2rem;">notifications_off</i>
+                <p class="text-xs text-secondary mb-0 mt-1">No new activity today</p>
+              </div>
             </li>
+            {% endif %}
           </ul>
-        </li> -->
+        </li>
         <li class="nav-item dropdown d-flex align-items-center">
           <a href="javascript:;" class="nav-link text-body font-weight-bold px-0" id="profileDropdown"
             data-bs-toggle="dropdown" aria-expanded="false">

@@ -113,6 +113,7 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'user_querySafe.context_processors.project_name',
+                'user_querySafe.context_processors.engagement_data',
             ],
         },
     },
