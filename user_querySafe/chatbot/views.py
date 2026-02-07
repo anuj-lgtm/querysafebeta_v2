@@ -83,7 +83,7 @@ def create_chatbot(request):
                 messages.error(request, f"You can upload a maximum of {allowed_docs} file(s) as per your subscription.")
                 return redirect('create_chatbot')
 
-            ALLOWED_EXTENSIONS = {'.pdf', '.doc', '.docx', '.txt', '.jpg', '.jpeg', '.png', '.gif', '.bmp'}
+            ALLOWED_EXTENSIONS = {'.pdf', '.doc', '.docx', '.txt', '.xlsx', '.xls', '.jpg', '.jpeg', '.png', '.gif', '.bmp'}
 
             successful_uploads = 0
             for doc in uploaded_docs:
@@ -91,7 +91,7 @@ def create_chatbot(request):
                 import os as _os
                 ext = _os.path.splitext(doc.name)[1].lower()
                 if ext not in ALLOWED_EXTENSIONS:
-                    messages.error(request, f"File '{doc.name}' has an unsupported type. Allowed: PDF, DOC, DOCX, TXT, JPG, PNG, GIF, BMP.")
+                    messages.error(request, f"File '{doc.name}' has an unsupported type. Allowed: PDF, DOC, DOCX, TXT, XLSX, XLS, JPG, PNG, GIF, BMP.")
                     continue
 
                 if doc.size > allowed_size_bytes:
@@ -257,7 +257,7 @@ def edit_chatbot(request, chatbot_id):
             total_sources = current_doc_count + url_count
             allowed_docs = active_plan.no_of_files
             allowed_size_bytes = active_plan.file_size * 1024 * 1024
-            ALLOWED_EXTENSIONS = {'.pdf', '.doc', '.docx', '.txt', '.jpg', '.jpeg', '.png', '.gif', '.bmp'}
+            ALLOWED_EXTENSIONS = {'.pdf', '.doc', '.docx', '.txt', '.xlsx', '.xls', '.jpg', '.jpeg', '.png', '.gif', '.bmp'}
 
             successful_uploads = 0
             for doc in uploaded_docs:

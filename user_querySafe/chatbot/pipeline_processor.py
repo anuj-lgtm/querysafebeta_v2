@@ -56,7 +56,7 @@ client = genai.Client(vertexai=True, project=PROJECT_ID, location=GEMINI_LOCATIO
 
 # ── File type definitions ─────────────────────────────────────────────
 IMAGE_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.gif', '.bmp'}
-TEXT_DOC_EXTENSIONS = {'.pdf', '.doc', '.docx', '.txt'}
+TEXT_DOC_EXTENSIONS = {'.pdf', '.doc', '.docx', '.txt', '.xlsx', '.xls'}
 
 # Minimum characters per PDF page to consider it text-based (not scanned)
 MIN_TEXT_CHARS = 50
@@ -139,6 +139,49 @@ def _extract_text_from_txt(file_path):
     """Read plain text file."""
     with open(file_path, "r", encoding="utf-8", errors="replace") as f:
         return f.read()
+
+
+def _extract_text_from_excel(file_path):
+    """Extract text from Excel (.xlsx or .xls) files.
+
+    Iterates over every sheet and every row, joining cell values with tabs.
+    Sheet names are included as section headers for context.
+    """
+    ext = os.path.splitext(file_path)[1].lower()
+    parts = []
+
+    if ext == '.xlsx':
+        import openpyxl
+        wb = openpyxl.load_workbook(file_path, read_only=True, data_only=True)
+        for sheet_name in wb.sheetnames:
+            ws = wb[sheet_name]
+            sheet_rows = []
+            for row in ws.iter_rows(values_only=True):
+                cells = [str(c) if c is not None else "" for c in row]
+                row_text = "\t".join(cells).strip()
+                if row_text:
+                    sheet_rows.append(row_text)
+            if sheet_rows:
+                parts.append(f"\n--- Sheet: {sheet_name} ---")
+                parts.extend(sheet_rows)
+        wb.close()
+
+    elif ext == '.xls':
+        import xlrd
+        wb = xlrd.open_workbook(file_path)
+        for sheet_idx in range(wb.nsheets):
+            ws = wb.sheet_by_index(sheet_idx)
+            sheet_rows = []
+            for row_idx in range(ws.nrows):
+                cells = [str(ws.cell_value(row_idx, col)) if ws.cell_value(row_idx, col) != "" else "" for col in range(ws.ncols)]
+                row_text = "\t".join(cells).strip()
+                if row_text:
+                    sheet_rows.append(row_text)
+            if sheet_rows:
+                parts.append(f"\n--- Sheet: {ws.name} ---")
+                parts.extend(sheet_rows)
+
+    return "\n".join(parts)
 
 
 def _image_to_base64(file_path):
@@ -388,6 +431,15 @@ def process_pipeline(chatbot_id):
                 if text.strip():
                     sourced_text_parts.append((text, display_name))
                     print(f"     ✓ Read text ({len(text)} chars)")
+
+            elif ext in {'.xlsx', '.xls'}:
+                print(f"  📊 Excel: {filename}")
+                text = _extract_text_from_excel(file_path)
+                if text.strip():
+                    sourced_text_parts.append((text, display_name))
+                    print(f"     ✓ Extracted text ({len(text)} chars)")
+                else:
+                    print(f"     ⚠️ No text found in {filename}")
 
             elif ext in IMAGE_EXTENSIONS:
                 print(f"  🖼️  Image: {filename}")

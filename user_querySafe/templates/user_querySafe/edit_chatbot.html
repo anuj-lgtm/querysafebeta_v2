@@ -253,7 +253,7 @@
                                     <label class="btn btn-primary">
                                         <i class="material-symbols-rounded align-middle">attach_file</i>
                                         Browse Files<input type="file" id="file-input" name="pdf_files" multiple
-                                            accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.gif,.bmp" class="d-none"
+                                            accept=".pdf,.doc,.docx,.txt,.xlsx,.xls,.jpg,.jpeg,.png,.gif,.bmp" class="d-none"
                                             onchange="handleFiles(this.files)" />
                                     </label>
                                     <div class="text-muted small mt-2">Maximum {{ active_plan.no_of_files|default:"5" }} total sources, {{ active_plan.file_size|default:"2" }}MB each.</div>
@@ -362,7 +362,7 @@
         const errorContainer = document.getElementById('file-error');
         errorContainer.style.display = 'none';
         let currentCount = accumulatedFiles.files.length;
-        const allowedTypes = ['.pdf', '.doc', '.docx', '.txt', '.jpg', '.jpeg', '.png', '.gif', '.bmp'];
+        const allowedTypes = ['.pdf', '.doc', '.docx', '.txt', '.xlsx', '.xls', '.jpg', '.jpeg', '.png', '.gif', '.bmp'];
 
         for (const file of newFiles) {
             const extension = '.' + file.name.split('.').pop().toLowerCase();
