@@ -1,11 +1,12 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from .forms import RegisterForm, OTPVerificationForm  # Remove LoginForm
-from .models import Activity, User, Chatbot, ChatbotDocument, Conversation, Message, ChatbotFeedback, EmailOTP, QSPlanAllot, HelpSupportRequest
+from .models import Activity, User, Chatbot, ChatbotDocument, Conversation, Message, ChatbotFeedback, EmailOTP, QSPlanAllot, HelpSupportRequest, BugReport, ScheduledEmail
 from django.http import JsonResponse, HttpResponse  # Import HttpResponse
 import json
 from django.views.decorators.csrf import csrf_exempt
 import os
+import string
 import faiss
 from google import genai
 from user_querySafe.chatbot.embedding_model import get_embedding_model
@@ -18,7 +19,7 @@ from datetime import timedelta
 from django.db.models import Count, Avg, Q
 from django.db.models.functions import TruncDate, ExtractHour
 import csv
-from django.core.mail import send_mail
+from django.core.mail import send_mail, EmailMessage
 import random
 from django.template.loader import render_to_string
 from .decorators import redirect_authenticated_user, login_required
@@ -127,7 +128,24 @@ def verify_otp_view(request):
                         
                         # Send welcome email
                         send_welcome_email(user.email, user.name, dashboard_url)
-                        
+
+                        # Schedule drip email sequence
+                        try:
+                            now = timezone.now()
+                            drip_schedule = [
+                                ('day1_getting_started', timedelta(days=1)),
+                                ('day3_first_chatbot', timedelta(days=3)),
+                                ('day7_tips', timedelta(days=7)),
+                            ]
+                            for email_type, delay in drip_schedule:
+                                ScheduledEmail.objects.get_or_create(
+                                    user=user,
+                                    email_type=email_type,
+                                    defaults={'scheduled_at': now + delay}
+                                )
+                        except Exception as drip_err:
+                            print(f"Error scheduling drip emails: {drip_err}")
+
                         # Clear activation session
                         if 'pending_activation_user_id' in request.session:
                             del request.session['pending_activation_user_id']
@@ -575,19 +593,37 @@ def conversations_view(request, chatbot_id=None, conversation_id=None):
     
     return render(request, 'user_querySafe/conversations.html', context)
 
+def _should_hide_branding(chatbot_user):
+    """Check if chatbot owner's active plan includes branding removal (Secure Business or higher)."""
+    try:
+        active_allot = QSPlanAllot.objects.filter(
+            user=chatbot_user,
+            expire_date__gte=timezone.now().date()
+        ).select_related('parent_plan').order_by('-created_at').first()
+        if not active_allot:
+            return False
+        # Secure Business (GSE37) and its trial (GSE38) include branding removal
+        return active_allot.parent_plan_id in ('GSE37', 'GSE38')
+    except Exception:
+        return False
+
+
 def chatbot_view(request, chatbot_id):
     # Get the chatbot or return 404
     chatbot = get_object_or_404(Chatbot, chatbot_id=chatbot_id)
-    
+
     # Only allow access if chatbot is trained
     if chatbot.status != 'trained':
         messages.error(request, 'This chatbot is not ready yet.')
         return redirect('my_chatbots')
-    
+
     # Parse sample questions (newline-separated)
     sample_questions = []
     if hasattr(chatbot, 'sample_questions') and chatbot.sample_questions.strip():
         sample_questions = [q.strip() for q in chatbot.sample_questions.strip().split('\n') if q.strip()][:4]
+
+    # Check if branding should be hidden based on owner's plan
+    hide_branding = _should_hide_branding(chatbot.user)
 
     context = {
         'chatbot': chatbot,
@@ -595,6 +631,7 @@ def chatbot_view(request, chatbot_id):
         'chatbot_logo': chatbot.logo.url if chatbot.logo else None,
         'chatbot_id': chatbot.chatbot_id,
         'sample_questions': sample_questions,
+        'hide_branding': hide_branding,
     }
 
     return render(request, 'user_querySafe/chatbot-view.html', context)
@@ -750,15 +787,26 @@ def chat_message(request):
 
         # Build system instruction (behavioral rules separated from content)
         system_parts = [
-            "You are a helpful AI assistant that answers questions based on the provided knowledge context.",
+            "You are a helpful AI assistant for a product/service. You answer questions ONLY using the provided knowledge context.",
             "Rules:",
-            "- Primarily answer from the provided knowledge context.",
-            "- For comparison or general questions, you may use broader knowledge but clearly note when doing so.",
-            "- If the knowledge context does not contain enough information, politely say you don't have that specific information.",
-            "- Keep answers concise and to the point. If the user wants more detail, they will ask.",
+            "- Answer ONLY from the provided knowledge context. Do NOT use any outside knowledge about the product or service.",
+            "- If the knowledge context does not contain the answer, say: 'I don't have that information in my knowledge base. Please contact our team for details.'",
+            "- NEVER guess, assume, or invent features, capabilities, or details not explicitly stated in the knowledge context.",
+            "- If asked about a feature and the context doesn't mention it, say you don't have information about that specific feature.",
             "- Maintain conversation continuity and reference previous messages when relevant.",
             "- Be natural and conversational. Never say 'based on the context' or 'according to the documents'.",
+            "- For general greetings or small talk, respond naturally without making claims about the product.",
             "- Respond in the same language the user writes in.",
+            "",
+            "Response formatting:",
+            "- For simple questions (yes/no, single fact, greeting), reply in 1-2 short sentences.",
+            "- For 'what is' or 'explain' questions, use a brief paragraph (3-5 sentences).",
+            "- For 'how to', steps, or process questions, use a numbered list.",
+            "- For listing features, benefits, or multiple items, use bullet points.",
+            "- For comparison questions, use a short paragraph or side-by-side bullets.",
+            "- When the user asks to elaborate or says 'tell me more', expand with a detailed paragraph and examples from the knowledge context.",
+            "- Never use more than 150 words unless the user explicitly asks for detail.",
+            "- Use markdown formatting (bold, bullets, numbered lists) for readability.",
         ]
         # Inject custom bot instructions if set
         if hasattr(chatbot, 'bot_instructions') and chatbot.bot_instructions.strip():
@@ -776,7 +824,7 @@ def chat_message(request):
         gemini_response = client.models.generate_content(
             model=settings.GEMINI_CHAT_MODEL,
             contents=[{"role": "user", "parts": [{"text": prompt}]}],
-            config={"system_instruction": system_instruction},
+            config={"system_instruction": system_instruction, "temperature": 0.3},
         )
 
         bot_response = gemini_response.text
@@ -882,11 +930,14 @@ def serve_widget_js(request, chatbot_id):
         return response
 
     chatbot = get_object_or_404(Chatbot, chatbot_id=chatbot_id)
-    
+
     # Get absolute URLs
     base_url = request.build_absolute_uri('/').rstrip('/')
     logo_url = request.build_absolute_uri(chatbot.logo.url) if chatbot.logo else None
-    
+
+    # Check if branding should be hidden based on owner's plan
+    hide_branding = _should_hide_branding(chatbot.user)
+
     context = {
         'chatbot': chatbot,
         'chatbot_name': chatbot.name,
@@ -894,6 +945,7 @@ def serve_widget_js(request, chatbot_id):
         'base_url': base_url,
         'collect_email': chatbot.collect_email,
         'collect_email_message': chatbot.collect_email_message or 'Please enter your email to get started.',
+        'hide_branding': hide_branding,
     }
     
     response = render(request, 'user_querySafe/widget.js', context, content_type='application/javascript')
@@ -1025,7 +1077,7 @@ def help_support(request):
 def send_otp_email(email, otp, name, verification_url):
     try:
         subject = 'Verify Your Account'
-        
+
         # Render the HTML template with personalized details
         html_message = render_to_string('user_querySafe/email/registration-otp.html', {
             'otp': otp,
@@ -1033,7 +1085,7 @@ def send_otp_email(email, otp, name, verification_url):
             'verification_url': verification_url,
             'project_name': settings.PROJECT_NAME
         })
-        
+
         # Create plain-text fallback message with a clickable URL
         plain_message = (
             f"Hello {name},\n\n"
@@ -1042,7 +1094,8 @@ def send_otp_email(email, otp, name, verification_url):
             f"{verification_url}\n\n"
             "The OTP is valid for 10 minutes."
         )
-        
+
+        # No CC on OTP emails — they contain sensitive verification codes
         send_mail(
             subject=subject,
             message=plain_message,
@@ -1070,14 +1123,17 @@ def send_welcome_email(email, name, dashboard_url):
             f"Access your dashboard here: {dashboard_url}\n\n"
             "Thank you for joining us."
         )
-        send_mail(
+
+        # Use EmailMessage for CC support
+        msg = EmailMessage(
             subject=subject,
-            message=plain_message,
+            body=html_message,
             from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[email],
-            html_message=html_message,
-            fail_silently=False,
+            to=[email],
+            cc=[settings.CC_EMAIL] if getattr(settings, 'CC_EMAIL', '') else [],
         )
+        msg.content_subtype = 'html'
+        msg.send(fail_silently=False)
         return True
     except Exception as e:
         print(f"Error sending welcome email: {str(e)}")
@@ -1269,7 +1325,7 @@ def analytics_export_csv(request):
     response['Content-Disposition'] = f'attachment; filename="{fname}"'
 
     writer = csv.writer(response)
-    writer.writerow(['Conversation ID', 'Chatbot', 'User Session', 'Started At',
+    writer.writerow(['Conversation ID', 'Chatbot', 'User Session', 'Visitor Email', 'Started At',
                      'Total Messages', 'Bot Messages', 'User Messages'])
 
     for conv in conv_qs.select_related('chatbot').prefetch_related('messages'):
@@ -1278,6 +1334,7 @@ def analytics_export_csv(request):
             conv.conversation_id,
             conv.chatbot.name,
             conv.user_id,
+            conv.visitor_email or '',
             conv.started_at.isoformat(),
             msgs.count(),
             msgs.filter(is_bot=True).count(),
@@ -1286,3 +1343,194 @@ def analytics_export_csv(request):
 
     return response
 
+
+# ─────────────────────────────────────────────
+# Contact Form API (for static public website)
+# ─────────────────────────────────────────────
+@csrf_exempt
+def contact_form_api(request):
+    """Handle contact form submissions from the static public website (querysafe.ai)."""
+    # CORS headers for cross-origin requests from querysafe.ai
+    allowed_origins = [
+        'https://querysafe.ai',
+        'https://www.querysafe.ai',
+        'http://localhost',
+        'http://127.0.0.1',
+    ]
+    origin = request.META.get('HTTP_ORIGIN', '')
+
+    def cors_response(response):
+        if origin in allowed_origins:
+            response['Access-Control-Allow-Origin'] = origin
+            response['Access-Control-Allow-Methods'] = 'POST, OPTIONS'
+            response['Access-Control-Allow-Headers'] = 'Content-Type'
+        return response
+
+    # Handle preflight OPTIONS request
+    if request.method == 'OPTIONS':
+        response = HttpResponse(status=200)
+        return cors_response(response)
+
+    if request.method != 'POST':
+        return cors_response(JsonResponse({'error': 'Method not allowed'}, status=405))
+
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return cors_response(JsonResponse({'error': 'Invalid JSON'}, status=400))
+
+    name = data.get('name', '').strip()
+    email = data.get('email', '').strip()
+    phone = data.get('phone', '').strip()
+    message_text = data.get('message', '').strip()
+
+    # Validation
+    if not name or not email or not message_text:
+        return cors_response(JsonResponse({'error': 'Name, email, and message are required.'}, status=400))
+
+    # Send email notification
+    try:
+        from django.core.mail import send_mail
+        subject = f'[QuerySafe Contact] New message from {name}'
+        body = (
+            f"Name: {name}\n"
+            f"Email: {email}\n"
+            f"Phone: {phone or 'Not provided'}\n\n"
+            f"Message:\n{message_text}\n"
+        )
+        send_mail(
+            subject,
+            body,
+            settings.DEFAULT_FROM_EMAIL,
+            [settings.ADMIN_EMAIL],
+            fail_silently=False,
+        )
+    except Exception as e:
+        return cors_response(JsonResponse({'error': 'Failed to send message. Please try again later.'}, status=500))
+
+    return cors_response(JsonResponse({'success': True, 'message': 'Thank you! Your message has been sent successfully.'}))
+
+
+# -----------------------------------------
+# Bug Report API (for static public website)
+# -----------------------------------------
+@csrf_exempt
+def bug_report_api(request):
+    """Handle bug report submissions from the static public website (querysafe.ai)."""
+    allowed_origins = [
+        'https://querysafe.ai',
+        'https://www.querysafe.ai',
+        'http://localhost',
+        'http://127.0.0.1',
+    ]
+    origin = request.META.get('HTTP_ORIGIN', '')
+
+    def cors_response(response):
+        if origin in allowed_origins:
+            response['Access-Control-Allow-Origin'] = origin
+            response['Access-Control-Allow-Methods'] = 'POST, OPTIONS'
+            response['Access-Control-Allow-Headers'] = 'Content-Type'
+        return response
+
+    # Handle preflight OPTIONS request
+    if request.method == 'OPTIONS':
+        response = HttpResponse(status=200)
+        return cors_response(response)
+
+    if request.method != 'POST':
+        return cors_response(JsonResponse({'error': 'Method not allowed'}, status=405))
+
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return cors_response(JsonResponse({'error': 'Invalid JSON'}, status=400))
+
+    email = data.get('email', '').strip()
+    title = data.get('title', '').strip()
+    description = data.get('description', '').strip()
+    steps_to_reproduce = data.get('steps_to_reproduce', '').strip()
+    severity = data.get('severity', 'low').strip().lower()
+
+    # Validation
+    if not email or not title or not description:
+        return cors_response(JsonResponse({'error': 'Email, title, and description are required.'}, status=400))
+
+    if severity not in ('low', 'medium', 'high', 'critical'):
+        return cors_response(JsonResponse({'error': 'Invalid severity level.'}, status=400))
+
+    # Rate limiting: 1 submission per email per 24 hours
+    one_day_ago = timezone.now() - timedelta(hours=24)
+    if BugReport.objects.filter(email=email, created_at__gte=one_day_ago).exists():
+        return cors_response(JsonResponse({
+            'error': 'You have already submitted a bug report in the last 24 hours. Please try again later.'
+        }, status=429))
+
+    # Generate coupon code
+    coupon_code = 'QS-BUG-' + ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
+
+    # Create the bug report
+    try:
+        report = BugReport(
+            email=email,
+            title=title,
+            description=description,
+            steps_to_reproduce=steps_to_reproduce,
+            severity=severity,
+            coupon_code=coupon_code,
+        )
+        report.save()
+    except Exception as e:
+        logger.error(f'Bug report creation failed: {e}')
+        return cors_response(JsonResponse({'error': 'Failed to submit report. Please try again.'}, status=500))
+
+    # Send admin email notification
+    try:
+        send_mail(
+            f'[QuerySafe Bug Report] {severity.upper()}: {title}',
+            f"Report ID: {report.report_id}\n"
+            f"Email: {email}\n"
+            f"Severity: {severity}\n"
+            f"Title: {title}\n\n"
+            f"Description:\n{description}\n\n"
+            f"Steps to Reproduce:\n{steps_to_reproduce or 'Not provided'}\n\n"
+            f"Coupon Code: {coupon_code}\n",
+            settings.DEFAULT_FROM_EMAIL,
+            [settings.ADMIN_EMAIL],
+            fail_silently=True,
+        )
+    except Exception:
+        pass  # Don't fail the request if email fails
+
+    return cors_response(JsonResponse({
+        'success': True,
+        'coupon_code': coupon_code,
+        'report_id': report.report_id,
+        'message': 'Bug report submitted successfully!'
+    }))
+
+
+# =====================================================================
+# CRON / SCHEDULED TASK ENDPOINTS
+# =====================================================================
+
+@csrf_exempt
+def cron_send_drip_emails(request):
+    """
+    HTTP trigger for Cloud Scheduler to send pending drip emails.
+    Protected by a shared secret in the X-Cron-Secret header.
+    """
+    # Verify cron secret to prevent unauthorized access
+    cron_secret = getattr(settings, 'CRON_SECRET', '')
+    request_secret = request.headers.get('X-Cron-Secret', '')
+
+    if not cron_secret or request_secret != cron_secret:
+        return JsonResponse({'error': 'Unauthorized'}, status=403)
+
+    from django.core.management import call_command
+    from io import StringIO
+
+    output = StringIO()
+    call_command('send_drip_emails', stdout=output)
+    result = output.getvalue()
+
+    return JsonResponse({'success': True, 'output': result})

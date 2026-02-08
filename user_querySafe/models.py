@@ -432,3 +432,78 @@ class ChatbotURL(models.Model):
 
     def __str__(self):
         return f"{self.chatbot.chatbot_id} - {self.url[:80]}"
+
+
+class BugReport(models.Model):
+    SEVERITY_CHOICES = (
+        ('low', 'Low'),
+        ('medium', 'Medium'),
+        ('high', 'High'),
+        ('critical', 'Critical'),
+    )
+    STATUS_CHOICES = (
+        ('new', 'New'),
+        ('reviewed', 'Reviewed'),
+        ('valid', 'Valid'),
+        ('invalid', 'Invalid'),
+        ('fixed', 'Fixed'),
+    )
+
+    report_id = models.CharField(max_length=10, primary_key=True, unique=True)
+    email = models.EmailField()
+    title = models.CharField(max_length=255)
+    description = models.TextField()
+    steps_to_reproduce = models.TextField(blank=True, default='')
+    severity = models.CharField(max_length=10, choices=SEVERITY_CHOICES, default='low')
+    coupon_code = models.CharField(max_length=20)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='new')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'bug_reports'
+        ordering = ['-created_at']
+
+    def save(self, *args, **kwargs):
+        if not self.report_id:
+            for _ in range(10):
+                self.report_id = 'BR' + ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
+                try:
+                    super().save(*args, **kwargs)
+                    return
+                except IntegrityError:
+                    continue
+            raise IntegrityError('Could not generate a unique report_id after 10 attempts')
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.report_id} - {self.title[:50]}"
+
+
+class ScheduledEmail(models.Model):
+    """Tracks drip/scheduled emails for user engagement sequences."""
+    EMAIL_TYPES = (
+        ('day1_getting_started', 'Day 1 - Getting Started'),
+        ('day3_first_chatbot', 'Day 3 - Create First Chatbot'),
+        ('day7_tips', 'Day 7 - Tips & Best Practices'),
+    )
+    STATUS_CHOICES = (
+        ('pending', 'Pending'),
+        ('sent', 'Sent'),
+        ('failed', 'Failed'),
+        ('skipped', 'Skipped'),
+    )
+
+    user = models.ForeignKey('User', on_delete=models.CASCADE, related_name='scheduled_emails')
+    email_type = models.CharField(max_length=30, choices=EMAIL_TYPES)
+    scheduled_at = models.DateTimeField()
+    sent_at = models.DateTimeField(null=True, blank=True)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'scheduled_emails'
+        ordering = ['scheduled_at']
+        unique_together = ('user', 'email_type')  # One of each type per user
+
+    def __str__(self):
+        return f"{self.user.email} - {self.email_type} ({self.status})"

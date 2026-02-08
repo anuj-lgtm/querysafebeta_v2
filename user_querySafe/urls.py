@@ -46,4 +46,11 @@ urlpatterns = [
     path('api/analytics/chart-data/', views.analytics_chart_data, name='analytics_chart_data'),
     path('api/analytics/export/', views.analytics_export_csv, name='analytics_export_csv'),
 
+    # Public website API
+    path('api/contact/', views.contact_form_api, name='contact_form_api'),
+    path('api/bug-report/', views.bug_report_api, name='bug_report_api'),
+
+    # Cron / Scheduled tasks (protected by CRON_SECRET header)
+    path('cron/send-drip-emails/', views.cron_send_drip_emails, name='cron_send_drip_emails'),
+
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

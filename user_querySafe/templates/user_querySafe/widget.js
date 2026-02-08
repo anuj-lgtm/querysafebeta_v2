@@ -81,7 +81,7 @@
             }
 
             #mv-chatbot-fab:hover {
-                box-shadow: 0 8px 24px rgba(0,123,255,0.18);
+                box-shadow: 0 8px 24px rgba(113,37,190,0.25);
                 background: rgb(59, 13, 116);
             }
 
@@ -112,15 +112,15 @@
             }
 
             #mv-chatbot-header {
-                background: #eaeaea;
-                color: #1c1c1c;
+                background: linear-gradient(135deg, #7125BE, #5b1d9e);
+                color: #ffffff;
                 padding: 12px 18px 12px 14px;
                 font-size: 1.2rem;
                 font-weight: 600;
                 display: flex;
                 align-items: center;
                 justify-content: space-between;
-                border-bottom: 1px solid #e0e0e0;
+                border-bottom: none;
                 min-height: 60px;
             }
 
@@ -138,7 +138,7 @@
                 justify-content: center;
                 background: #fff;
                 border-radius: 50%;
-                box-shadow: 0 2px 8px rgba(0,123,255,0.07);
+                box-shadow: 0 2px 8px rgba(113,37,190,0.1);
                 overflow: hidden;
             }
 
@@ -161,14 +161,14 @@
             .main-title {
                 font-size: 1.08rem;
                 font-weight: 700;
-                color: #222;
+                color: #fff;
                 margin-bottom: 2px;
                 letter-spacing: 0.2px;
             }
 
             .sub-title {
                 font-size: 0.93rem;
-                color: #555;
+                color: rgba(255,255,255,0.75);
                 font-weight: 300;
                 letter-spacing: 0.1px;
             }
@@ -187,28 +187,28 @@
             }
 
             #mv-chatbot-close:hover {
-                background: #e0eaff;
+                background: rgba(255,255,255,0.3);
             }
 
             #mv-chatbot-messages {
                 flex: 1;
                 overflow-y: auto;
                 padding: 18px 10px 10px 10px;
-                background: #f4f4f4;
+                background: #ffffff;
                 display: flex;
                 flex-direction: column;
                 scrollbar-width: thin;
-                scrollbar-color: #cecece #e0e0e000;
+                scrollbar-color: #7125BE #f3f0f800;
             }
 
             #mv-chatbot-messages::-webkit-scrollbar {
                 width: 8px;
                 border-radius: 8px;
-                background: #e0e0e0;
+                background: #f3f0f8;
             }
 
             #mv-chatbot-messages::-webkit-scrollbar-thumb {
-                background: linear-gradient(135deg, #007bff 40%, #0056b3 100%);
+                background: linear-gradient(135deg, #7125BE 40%, #5b1d9e 100%);
                 border-radius: 8px;
             }
 
@@ -227,7 +227,7 @@
             }
 
             .mv-chatbot-user-msg {
-                background-color: #1c1c1c;
+                background-color: #7125BE;
                 color: white;
                 align-self: flex-end;
                 border-bottom-right-radius: 0;
@@ -235,7 +235,7 @@
             }
 
             .mv-chatbot-bot-msg {
-                background-color: #cbcbcb;
+                background-color: #f3f0f8;
                 align-self: flex-start;
                 border-bottom-left-radius: 0;
             }
@@ -267,7 +267,7 @@
             }
 
             #mv-chatbot-send-btn {
-                background-color: #2a2a2a;
+                background-color: #7125BE;
                 color: white;
                 padding: 10px 14px;
                 border: none;
@@ -282,7 +282,7 @@
             }
 
             #mv-chatbot-send-btn:hover {
-                background-color: #0056b3;
+                background-color: #5b1d9e;
             }
 
             #mv-chatbot-send-btn:disabled {
@@ -492,8 +492,8 @@
                         </div>
                         <button id="mv-chatbot-close" onclick="querySafe.toggleWidget()" title="Close">
                             <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-                                <circle cx="12" cy="12" r="12" fill="#f4f4f4"/>
-                                <path d="M8 8l8 8M16 8l-8 8" stroke="#191919" stroke-width="2" stroke-linecap="round"/>
+                                <circle cx="12" cy="12" r="12" fill="rgba(255,255,255,0.2)"/>
+                                <path d="M8 8l8 8M16 8l-8 8" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
                             </svg>
                         </button>
                     </div>
@@ -538,7 +538,13 @@
                             </div>
                         </div>
                     </div>
-                    <div class="devlop-credit">Made with ❤ by Metric Vibes</div>
+                    <div class="mv-chatbot-trust" style="display:flex;align-items:center;justify-content:center;gap:5px;padding:5px 12px;margin:0;font-size:9.5px;color:#2d7a4f;background:#f0fdf4;border-top:1px solid #d1fae5;line-height:1.3;">
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="#2dce89" style="flex-shrink:0;"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/></svg>
+                        <span>Private &amp; secure — your data is encrypted and never used for AI training</span>
+                    </div>
+                    {% if not hide_branding %}
+                    <div class="devlop-credit">Powered by <a href="https://querysafe.ai" target="_blank" rel="noopener" style="color:#7125BE;text-decoration:none;font-weight:600;">QuerySafe</a></div>
+                    {% endif %}
                     <div class="mv-chatbot-note">
                         <span>
                             <b>NOTE:</b> This is AI and may make mistakes. Please check answers carefully. Conversations are stored for overview and training purposes.

@@ -91,35 +91,29 @@ def usage_view(request):
 
 def send_plan_activation_email(email, name, plan, start_date, expire_date, dashboard_url):
     try:
+        from django.core.mail import EmailMessage as EM
         subject = "Plan Activated Successfully"
         context = {
             'name': name,
-            # You can dynamically pass these values from the plan
             'plan_name': plan.plan_name,
-            'plan_limits': f"{plan.no_of_bot} Bot(s), {plan.no_query_per_bot} Queries per Bot, {plan.no_of_docs_per_bot} Document(s)",
+            'plan_limits': f"{getattr(plan, 'no_of_bot', 0)} Bot(s), {getattr(plan, 'no_of_query', 0)} Queries, {getattr(plan, 'no_of_file', 0)} Document(s)",
             'start_date': start_date.strftime('%B %d, %Y'),
             'expire_date': expire_date.strftime('%B %d, %Y'),
             'dashboard_url': dashboard_url,
             'project_name': settings.PROJECT_NAME
         }
         html_message = render_to_string("user_querySafe/email/plan-activate.html", context)
-        plain_message = (
-            f"Hello {name},\n\n"
-            f"Your plan '{plan.plan_name}' has been activated successfully.\n"
-            f"Plan Limits: {plan.no_of_bot} Bot(s), {plan.no_query_per_bot} Queries per Bot, {plan.no_of_docs_per_bot} Document(s)\n"
-            f"Start Date: {start_date.strftime('%B %d, %Y')}\n"
-            f"Valid Till: {expire_date.strftime('%B %d, %Y')}\n\n"
-            f"Go to your dashboard: {dashboard_url}\n\n"
-            "Thank you for subscribing to QuerySafe."
-        )
-        send_mail(
+
+        # Use EmailMessage for CC support
+        msg = EM(
             subject=subject,
-            message=plain_message,
+            body=html_message,
             from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[email],
-            html_message=html_message,
-            fail_silently=False,
+            to=[email],
+            cc=[settings.CC_EMAIL] if getattr(settings, 'CC_EMAIL', '') else [],
         )
+        msg.content_subtype = 'html'
+        msg.send(fail_silently=False)
         return True
     except Exception as e:
         print(f"Error sending plan activation email: {str(e)}")
@@ -338,6 +332,16 @@ def order_payment(request):
                             start_date=start_date,
                             expire_date=expire_date
                         )
+
+                        # Send plan activation email
+                        try:
+                            dashboard_url = request.build_absolute_uri(reverse('dashboard'))
+                            send_plan_activation_email(
+                                user.email, user.name, plan_obj,
+                                start_date, expire_date, dashboard_url
+                            )
+                        except Exception as email_err:
+                            print(f"Plan activation email error (free): {email_err}")
 
                         # Update session so the user sees the new plan immediately
                         try:
@@ -642,9 +646,19 @@ def payment_status(request):
                             expire_date=expire_date
                         )
                         result['plan_allot_created'] = True
+
+                        # Send plan activation email
+                        try:
+                            dashboard_url = request.build_absolute_uri(reverse('dashboard'))
+                            send_plan_activation_email(
+                                qs_order.user.email, qs_order.user.name, plan,
+                                start_date, expire_date, dashboard_url
+                            )
+                        except Exception as email_err:
+                            print(f"Plan activation email error (paid): {email_err}")
             except Exception as e:
                 result['message'] = result.get('message', '') + f' (Plan allot error: {e})'
-            
+
             # If plan allotment was created, update session so user sees new plan immediately
             try:
                 if result.get('plan_allot_created'):

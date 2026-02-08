@@ -1,7 +1,7 @@
 # QuerySafe — Complete Product Documentation
 
-> **Version:** 2.0
-> **Last Updated:** February 2026 (Post-PostgreSQL Migration)
+> **Version:** 2.1
+> **Last Updated:** February 2026 (Google OAuth, Excel Support, Dark UI, Cost Analysis)
 > **Prepared by:** Metric Vibes
 > **Classification:** Internal + Sales
 
@@ -47,7 +47,12 @@
 7. [How QuerySafe Benefits Users](#7-how-querysafe-benefits-users)
 8. [Future Roadmap](#8-future-roadmap)
 9. [Contact & Links](#9-contact--links)
-10. [Appendix](#10-appendix)
+10. [Unit Economics & Cloud Cost Analysis](#10-unit-economics--cloud-cost-analysis)
+    - 10.1 [Fixed Infrastructure Costs](#101-fixed-infrastructure-costs)
+    - 10.2 [Variable Cost Per Active User](#102-variable-cost-per-active-user)
+    - 10.3 [Margin Analysis](#103-margin-analysis)
+    - 10.4 [Break-Even & Scaling](#104-break-even--scaling)
+11. [Appendix](#11-appendix)
 
 ---
 
@@ -62,7 +67,7 @@ In an era where businesses need AI-powered customer support but fear their sensi
 | What | How |
 |------|-----|
 | **Privacy-First AI** | Zero LLM training on your data. AES-256 encryption. Isolated workspaces. |
-| **Multi-Source Training** | Train chatbots on PDFs, Word docs, images, text files, website URLs, and sitemaps |
+| **Multi-Source Training** | Train chatbots on PDFs, Word docs, Excel spreadsheets, images, text files, website URLs, and sitemaps |
 | **One-Line Embed** | Add an AI chatbot to any website with a single `<script>` tag |
 | **Full Control** | Custom bot personality, starter questions, branding, and retraining on demand |
 | **Lead Capture** | Optional email collection from website visitors before first chat interaction |
@@ -128,7 +133,7 @@ QuerySafe Console                |    +---> SentenceTransformer Embeddings  |
 
 ### 3.1 User Authentication & Onboarding
 
-QuerySafe uses a custom authentication system (not Django's built-in auth) with email-based registration and OTP verification.
+QuerySafe uses a custom authentication system (not Django's built-in auth) with email-based registration, OTP verification, and Google OAuth 2.0 sign-in.
 
 #### Registration Flow
 
@@ -136,6 +141,7 @@ QuerySafe uses a custom authentication system (not Django's built-in auth) with 
    - Password confirmation validation
    - Email uniqueness check
    - Passwords are hashed using bcrypt before storage
+   - **Google Sign-Up** — One-click registration via Google OAuth 2.0 (auto-activates account, skips OTP)
 2. **OTP Verification** — 6-digit OTP sent to email
    - OTP is valid for 10 minutes
    - Resend available after 30-second cooldown (AJAX-powered)
@@ -149,6 +155,7 @@ QuerySafe uses a custom authentication system (not Django's built-in auth) with 
 #### Login
 
 - Email + password authentication
+- **Google Sign-In** — "Continue with Google" OAuth 2.0 button on login page (auto-creates account if new user)
 - **Legacy password migration**: Automatically detects and upgrades plain-text passwords to bcrypt hashes on successful login
 - **"Remember Me"** option: Extends session expiry for persistent login
 - **Post-login redirect**: If user was trying to access a protected page, redirects there after login
@@ -281,7 +288,7 @@ Users can train their chatbot on website content in addition to documents:
 | Feature | Detail |
 |---------|--------|
 | **Upload Method** | Drag-and-drop zone + file picker button |
-| **Supported Formats** | PDF, DOCX, DOC, TXT, JPG, JPEG, PNG, GIF, BMP |
+| **Supported Formats** | PDF, DOCX, DOC, TXT, XLSX, XLS, JPG, JPEG, PNG, GIF, BMP |
 | **Validation** | File type whitelist, size limit (per plan), count limit (per plan), duplicate detection |
 | **Preview** | Selected files shown with name, size, and remove button |
 | **Quota Display** | Shows remaining file slots and max size based on active plan |
@@ -406,7 +413,7 @@ Step 9: Status Update & Notification
 - If no files AND no URLs exist, pipeline returns early
 
 **Step 2 — File Classification:**
-- **Text-based:** `.pdf`, `.docx`, `.doc`, `.txt`
+- **Text-based:** `.pdf`, `.docx`, `.doc`, `.txt`, `.xlsx`, `.xls`
 - **Image-based:** `.jpg`, `.jpeg`, `.png`, `.gif`, `.bmp`
 
 **Step 3 — Text Extraction:**
@@ -416,6 +423,8 @@ Step 9: Status Update & Notification
 | PDF | PyMuPDF (fitz) | Extracts text per page. Pages with <50 characters flagged as "scanned" |
 | DOCX | python-docx | Extracts paragraphs + table cell content |
 | TXT | Plain read | Direct file content |
+| Excel (.xlsx) | openpyxl | Iterates all sheets and rows, extracts cell values with sheet names as section headers |
+| Excel (.xls) | xlrd | Legacy Excel format extraction, same sheet-by-sheet approach |
 | DOC (legacy) | LibreOffice (Linux) or Win32COM (Windows) | Converts to PDF first, then extracts |
 
 **Step 4 — Vision Processing:**
@@ -1149,6 +1158,7 @@ Contact: sales@metricvibes.com or +91 75036 59606
 | **Text Splitting** | LangChain | 0.3.24 |
 | **PDF Processing** | PyMuPDF | 1.25.5 |
 | **Word Processing** | python-docx | 1.1.2 |
+| **Excel Processing** | openpyxl + xlrd | 3.1.5 / 2.0.1 |
 | **URL Scraping** | httpx + lxml | 0.28.1 / 5.4.0 |
 | **Payment Gateway** | Razorpay | 1.4.1 |
 | **Static Files** | WhiteNoise | 6.8.2 |
@@ -1165,7 +1175,8 @@ Contact: sales@metricvibes.com or +91 75036 59606
 │  ┌──────────┐   ┌──────────────┐   ┌────────────────────────┐  │
 │  │ PDF/DOCX │──▶│ Text Extract  │──▶│                        │  │
 │  │ TXT/DOC  │   │ (PyMuPDF,    │   │                        │  │
-│  └──────────┘   │  python-docx)│   │   LangChain Chunker    │  │
+│  │ XLS/XLSX │   │  python-docx, │   │                        │  │
+│  └──────────┘   │  openpyxl)   │   │   LangChain Chunker    │  │
 │                 └──────────────┘   │   (1500 chars,          │  │
 │  ┌──────────┐   ┌──────────────┐   │    200 overlap)         │  │
 │  │ Scanned  │──▶│ Gemini 2.0   │──▶│                        │  │
@@ -1426,6 +1437,8 @@ HelpSupportRequest
 | POST | `/register/` | Create account |
 | POST | `/verify-otp/` | Verify email OTP |
 | POST | `/resend-otp/` | Resend OTP (AJAX) |
+| GET | `/auth/google/` | Initiate Google OAuth 2.0 sign-in |
+| GET | `/auth/google/callback/` | Google OAuth 2.0 callback handler |
 | GET | `/widget/{chatbot_id}/querySafe.js` | Serve chatbot widget JS |
 | GET | `/chatbot_view/{chatbot_id}/` | Public chatbot demo page |
 | POST | `/chat/` | Send chat message (CORS) |
@@ -1488,6 +1501,8 @@ HelpSupportRequest
 |---------|---------|---------|
 | PyMuPDF | 1.25.5 | PDF text extraction |
 | python-docx | 1.1.2 | Word document processing |
+| openpyxl | 3.1.5 | Excel (.xlsx) spreadsheet parsing |
+| xlrd | 2.0.1 | Legacy Excel (.xls) spreadsheet parsing |
 | fpdf2 | 2.8.3 | PDF generation |
 | pillow | 11.2.1 | Image processing |
 | lxml | 5.4.0 | HTML/XML parsing |
@@ -1568,6 +1583,12 @@ QuerySafe's development roadmap focuses on three pillars: **expanding capabiliti
 | **Synchronous Training** | Training runs within HTTP request to prevent Cloud Run CPU throttling | Done |
 | **Model Pre-Download** | SentenceTransformer model baked into Docker image for fast cold starts | Done |
 | **SMB Repositioning** | Enterprise/On-Premise card replaced with Custom/Agency for SMB market | Done |
+| **Google OAuth Sign-In** | "Continue with Google" OAuth 2.0 on login and register pages — auto-creates/activates accounts | Done |
+| **Dark Glassmorphism Auth UI** | Login, register, and OTP pages redesigned with dark AI-company aesthetic (gradient mesh, blur effects) | Done |
+| **Excel File Support** | Training pipeline supports .xlsx (openpyxl) and .xls (xlrd) files with multi-sheet extraction | Done |
+| **Separate Gemini API Region** | GEMINI_LOCATION setting allows Gemini API calls to route to us-central1 while Cloud Run stays in asia-south1 | Done |
+| **Toast System Improvements** | Warning toast type, accessible close buttons (btn-close), improved visibility across all pages | Done |
+| **Dashboard & Chatbot UI Modernization** | Pill BETA badge, card animations, table hover effects, softer borders | Done |
 
 ### Near-Term (Next 3-6 Months)
 
@@ -1628,7 +1649,112 @@ QuerySafe's development roadmap focuses on three pillars: **expanding capabiliti
 
 ---
 
-## 10. Appendix
+## 10. Unit Economics & Cloud Cost Analysis
+
+> **Purpose:** This section provides a transparent breakdown of QuerySafe's infrastructure costs and per-user economics for investors, potential partners, and internal financial planning. All figures are based on current Google Cloud pricing (February 2026) and actual usage patterns.
+
+### 10.1 Fixed Infrastructure Costs
+
+These costs are incurred regardless of user count and represent the base operational expense:
+
+| Service | Configuration | Monthly Cost (INR) | Monthly Cost (USD) |
+|---------|--------------|-------------------|-------------------|
+| **Cloud SQL PostgreSQL** | db-f1-micro, shared vCPU, 628MB RAM, ~20GB SSD, asia-south1 | ~900 | ~$10.60 |
+| **Cloud Run** | 2 vCPU, 1GB RAM, min-instances=0, max-instances=3, asia-south1 | ~250-500 | ~$3-6 |
+| **Cloud Storage (GCS)** | FUSE-mounted bucket for FAISS indices, documents, media | ~50-100 | ~$0.60-1.20 |
+| **Artifact Registry** | Docker container images from Cloud Build | ~80-150 | ~$1-1.80 |
+| **Cloud Build** | Container builds triggered per deployment | ~40-80 | ~$0.50-1 |
+| **Total Fixed** | | **~1,300-1,700** | **~$16-20** |
+
+**Key Notes:**
+- Cloud Run scales to zero when idle — cost is purely request-driven outside min-instances
+- Cloud SQL is the single largest fixed cost (~60% of total)
+- GCS uses standard storage class with GCS FUSE for direct filesystem access
+- Artifact Registry stores Docker images; cost is minimal with cleanup policies
+
+### 10.2 Variable Cost Per Active User
+
+Variable costs scale linearly with active subscribers and are dominated by Vertex AI API usage.
+
+**Gemini 2.0 Flash Pricing (Vertex AI, as of Feb 2026):**
+
+| Token Type | Cost per 1M Tokens |
+|------------|-------------------|
+| Input tokens | $0.10 |
+| Output tokens | $0.40 |
+
+**Typical per-message token breakdown:**
+
+| Component | Tokens | Notes |
+|-----------|--------|-------|
+| System instruction | 300-500 | Bot personality, rules |
+| Chat history (last 5 msgs) | ~200 | Context continuity |
+| Knowledge context (8 FAISS chunks) | 1,000-3,000 | Retrieved document snippets |
+| User query | 50-200 | 5,000 char limit |
+| Bot response (output) | 300-800 | Generated answer |
+| **Total per message** | **~2,000-5,500** | **Typically 3,000-4,000** |
+
+#### Private Solo Plan (INR 799/month | USD 9/month)
+
+| Cost Driver | Calculation | Monthly Cost (INR) |
+|-------------|-------------|-------------------|
+| Gemini Chat API | 800 queries x ~3,500 avg tokens = 2.8M tokens | ~3-4 |
+| Gemini Vision API (training) | ~0-4 Vision calls (text docs only) | ~0-1 |
+| Cloud Run compute (serving) | ~800 requests x ~2s each | ~1-2 |
+| Embedding inference | Runs locally on Cloud Run (no API cost) | 0 |
+| **Total variable cost per user** | | **~4-6** |
+
+#### Secure Business Plan (INR 2,499/month | USD 29/month)
+
+| Cost Driver | Calculation | Monthly Cost (INR) |
+|-------------|-------------|-------------------|
+| Gemini Chat API | 1,000 queries x ~3,500 avg tokens = 3.5M tokens | ~4-5 |
+| Gemini Vision API (training) | ~15 Vision calls (3 bots, mixed docs/images) | ~1-2 |
+| Cloud Run compute (serving) | ~1,000 requests x ~2s each | ~2-3 |
+| Embedding inference | Runs locally on Cloud Run (no API cost) | 0 |
+| **Total variable cost per user** | | **~7-10** |
+
+### 10.3 Margin Analysis
+
+| Plan | Revenue (INR) | Variable Cost (INR) | Gross Margin (INR) | Gross Margin (%) |
+|------|--------------|--------------------|--------------------|-----------------|
+| **Private Solo** | 799 | ~5 | ~794 | **99.4%** |
+| **Secure Business** | 2,499 | ~9 | ~2,490 | **99.6%** |
+
+**Why margins are so high:**
+- Gemini 2.0 Flash is one of the cheapest production-grade LLMs available
+- Embeddings run locally on-container (SentenceTransformer) — zero API cost
+- FAISS search is CPU-only, no paid vector DB service
+- Cloud Run's scale-to-zero means idle users cost virtually nothing
+
+### 10.4 Break-Even & Scaling
+
+**Break-even point:** Fixed infrastructure costs (~INR 1,500/month) are covered with:
+- **2 Solo subscribers** (2 x 799 = INR 1,598), OR
+- **1 Business subscriber** (INR 2,499)
+
+**Scaling projections (Monthly):**
+
+| Active Users | Revenue (INR) | Fixed Cost (INR) | Variable Cost (INR) | Net Margin (INR) | Net Margin (%) |
+|-------------|--------------|-----------------|--------------------|-----------------|----|
+| 5 (all Solo) | 3,995 | 1,500 | 25 | 2,470 | 61.8% |
+| 10 (mix) | 13,490 | 1,500 | 70 | 11,920 | 88.4% |
+| 50 (mix) | 67,450 | 2,000* | 350 | 65,100 | 96.5% |
+| 100 (mix) | 134,900 | 2,500* | 700 | 131,700 | 97.6% |
+
+*\*Fixed costs increase slightly at scale due to higher Cloud Run min-instances and storage growth.*
+
+**At 100 users, total Vertex AI cost is under INR 1,000/month** — AI is not the cost bottleneck.
+
+**Scaling considerations:**
+- Cloud SQL may need an upgrade from db-f1-micro (~INR 900/mo) to db-g1-small (~INR 2,200/mo) at ~200+ active users
+- Cloud Run auto-scales horizontally — no manual intervention needed
+- GCS storage grows linearly with document uploads (~INR 8.50/GB/month)
+- Artifact Registry cleanup policies keep image storage costs bounded
+
+---
+
+## 11. Appendix
 
 ### A. Supported File Formats
 
@@ -1639,6 +1765,8 @@ QuerySafe's development roadmap focuses on three pillars: **expanding capabiliti
 | Word Document | .docx | python-docx paragraph + table extraction |
 | Legacy Word | .doc | LibreOffice/Win32COM conversion → PDF pipeline |
 | Plain Text | .txt | Direct file read |
+| Excel (Modern) | .xlsx | openpyxl — all sheets, rows, cell values |
+| Excel (Legacy) | .xls | xlrd — all sheets, rows, cell values |
 | JPEG Image | .jpg, .jpeg | Gemini 2.0 Flash Vision |
 | PNG Image | .png | Gemini 2.0 Flash Vision |
 | GIF Image | .gif | Gemini 2.0 Flash Vision |
@@ -1665,15 +1793,19 @@ QuerySafe's development roadmap focuses on three pillars: **expanding capabiliti
 | `SECRET_KEY` | — | Django secret key |
 | `PROJECT_NAME` | `QuerySafe` | Application name |
 | `PROJECT_ID` | — | Google Cloud project ID |
-| `REGION` | — | Google Cloud region |
+| `REGION` | — | Google Cloud region (Cloud Run deployment) |
+| `GEMINI_LOCATION` | `us-central1` | Gemini API region (can differ from Cloud Run region if models unavailable locally) |
 | `DB_NAME` | `querysafe` | PostgreSQL database name (production) |
 | `DB_USER` | `querysafe` | PostgreSQL database user (production) |
 | `DB_PASSWORD` | — | PostgreSQL database password (production) |
 | `DB_HOST` | `/cloudsql/...` | Cloud SQL instance connection path (production) |
 | `DB_PORT` | `5432` | PostgreSQL port (production) |
 | `DATABASE_NAME` | `db.sqlite3` | SQLite database filename (local dev only) |
-| `GEMINI_CHAT_MODEL` | `gemini-2.0-flash-001` | Chat model name |
-| `GEMINI_VISION_MODEL` | `gemini-2.0-flash-001` | Vision model name |
+| `GEMINI_CHAT_MODEL` | `gemini-2.0-flash` | Chat model name |
+| `GEMINI_VISION_MODEL` | `gemini-2.0-flash` | Vision model name |
+| `GOOGLE_CLIENT_ID` | — | Google OAuth 2.0 client ID |
+| `GOOGLE_CLIENT_SECRET` | — | Google OAuth 2.0 client secret |
+| `GOOGLE_REDIRECT_URI` | — | Google OAuth 2.0 redirect URI |
 | `RAZORPAY_KEY_ID` | — | Razorpay API key |
 | `RAZORPAY_KEY_SECRET` | — | Razorpay secret key |
 | `RAZORPAY_WEBHOOK_SECRET` | — | Razorpay webhook secret |

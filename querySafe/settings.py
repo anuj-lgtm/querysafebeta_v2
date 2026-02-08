@@ -73,7 +73,9 @@ EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'False') == 'True'
 EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', 'no-reply@metricvibes.com')
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
 DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'no-reply@metricvibes.com')
-ADMIN_EMAIL = os.getenv('ADMIN_EMAIL', 'contactmedipanshu@gmail.com')  # Add this if missing
+ADMIN_EMAIL = os.getenv('ADMIN_EMAIL', 'anuj@metricvibes.com')
+CC_EMAIL = os.getenv('CC_EMAIL', 'anuj@querysafe.ai')  # CC on all user-facing emails
+CRON_SECRET = os.getenv('CRON_SECRET', '')  # Shared secret for Cloud Scheduler cron triggers
 
 # Note: For Hostinger, we use SSL instead of TLS
 

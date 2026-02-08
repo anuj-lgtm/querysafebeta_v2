@@ -27,3 +27,7 @@ nul
 Thumbs.db
 desktop.ini
 .DS_Store
+public_site_static/
+querySafe_landing/
+QUERYSAFE_PRODUCT_DOCUMENT.md
+DEPLOY_QUERYSAFE.md

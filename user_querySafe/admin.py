@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.utils.html import format_html
-from .models import User, Chatbot, ChatbotDocument, ChatbotURL, Conversation, Message, HelpSupportRequest, ChatbotFeedback, EmailOTP, Activity, QSPlan, QSCheckout, QSBillingDetails, QSOrder, QSPlanAllot, VisionAPIUsage
+from .models import User, Chatbot, ChatbotDocument, ChatbotURL, Conversation, Message, HelpSupportRequest, ChatbotFeedback, EmailOTP, Activity, QSPlan, QSCheckout, QSBillingDetails, QSOrder, QSPlanAllot, VisionAPIUsage, BugReport, ScheduledEmail
 
 @admin.register(User)
 class UserAdmin(admin.ModelAdmin):
@@ -178,4 +178,20 @@ class VisionAPIUsageAdmin(admin.ModelAdmin):
     list_display = ('chatbot', 'call_count', 'call_type', 'created_at')
     list_filter = ('call_type', 'created_at')
     search_fields = ('chatbot__chatbot_id', 'chatbot__name')
+    readonly_fields = ('created_at',)
+
+
+@admin.register(BugReport)
+class BugReportAdmin(admin.ModelAdmin):
+    list_display = ('report_id', 'email', 'title', 'severity', 'coupon_code', 'status', 'created_at')
+    list_filter = ('severity', 'status', 'created_at')
+    search_fields = ('report_id', 'email', 'title', 'description')
+    readonly_fields = ('report_id', 'created_at')
+
+
+@admin.register(ScheduledEmail)
+class ScheduledEmailAdmin(admin.ModelAdmin):
+    list_display = ('user', 'email_type', 'scheduled_at', 'sent_at', 'status', 'created_at')
+    list_filter = ('email_type', 'status', 'scheduled_at')
+    search_fields = ('user__email', 'user__name')
     readonly_fields = ('created_at',)
