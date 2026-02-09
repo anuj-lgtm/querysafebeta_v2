@@ -11,7 +11,7 @@ from django.views.decorators.http import require_POST
 from django.shortcuts import get_object_or_404, redirect, render
 from user_querySafe.decorators import login_required
 from user_querySafe.forms import ChatbotCreateForm, ChatbotEditForm
-from user_querySafe.models import Activity, Chatbot, ChatbotDocument, User, QSPlanAllot
+from user_querySafe.models import Activity, Chatbot, ChatbotDocument, Conversation, User, QSPlanAllot
 from .pipeline_processor import run_pipeline_background, PDF_DIR
 
 
@@ -32,6 +32,9 @@ def my_chatbots(request):
     trained_count = chatbots.filter(status='trained').count()
     show_widget_guidance = current_chatbots <= 2 and trained_count > 0
 
+    # Check if user has any conversations (to show contextual "Next Step" banner)
+    has_any_conversations = Conversation.objects.filter(chatbot__in=chatbots).exists()
+
     context = {
         'chatbots': chatbots,
         'active_plan': active_plan,
@@ -40,6 +43,7 @@ def my_chatbots(request):
         'chatbots_remaining': (active_plan.no_of_bot - current_chatbots) if active_plan else 0,
         'show_toaster': False,
         'show_widget_guidance': show_widget_guidance,
+        'has_any_conversations': has_any_conversations,
     }
     return render(request, 'user_querySafe/my_chatbots.html', context)
 
@@ -204,6 +208,25 @@ def chatbot_status(request):
     chatbots = Chatbot.objects.filter(user=user)
     data = [{'chatbot_id': bot.chatbot_id, 'status': bot.status} for bot in chatbots]
     return JsonResponse(data, safe=False)
+
+@login_required
+def chatbot_documents_api(request, chatbot_id):
+    """AJAX endpoint to return the list of documents for a chatbot."""
+    user = User.objects.get(user_id=request.session['user_id'])
+    chatbot = get_object_or_404(Chatbot, chatbot_id=chatbot_id, user=user)
+    documents = ChatbotDocument.objects.filter(chatbot=chatbot).order_by('-uploaded_at')
+    docs_data = []
+    for doc in documents:
+        file_ext = os.path.splitext(doc.document.name)[1].lower() if doc.document else ''
+        file_size = doc.document.size if doc.document and hasattr(doc.document, 'size') else 0
+        docs_data.append({
+            'name': doc.original_filename if hasattr(doc, 'original_filename') and doc.original_filename else os.path.basename(doc.document.name),
+            'type': file_ext.replace('.', '').upper() or 'FILE',
+            'size_kb': round(file_size / 1024, 1) if file_size else 0,
+            'uploaded_at': doc.uploaded_at.strftime('%b %d, %Y') if doc.uploaded_at else '',
+        })
+    return JsonResponse({'documents': docs_data, 'total': len(docs_data)})
+
 
 def chatbot_detail_view(request, pk):
     if 'user_id' not in request.session:

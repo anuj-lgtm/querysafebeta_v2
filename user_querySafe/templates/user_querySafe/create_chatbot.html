@@ -103,10 +103,14 @@
                                         <div class="mb-3">
                                             <label for="id_bot_instructions" class="form-label d-flex align-items-center">
                                                 <i class="material-symbols-rounded me-2 border rounded p-1">tune</i>
-                                                Bot Instructions <span class="text-muted ms-1" style="font-weight:400;font-size:0.85em;">(Optional)</span>
+                                                Bot Instructions
+                                                <span class="text-muted ms-1" style="font-weight:400;font-size:0.85em;">(Recommended)</span>
+                                                <span class="ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="Bot instructions control your chatbot's personality, tone, and boundaries. This makes your AI bot uniquely yours." style="cursor:help;">
+                                                  <i class="material-symbols-rounded" style="font-size:1rem;color:#7125BE;">info</i>
+                                                </span>
                                             </label>
                                             {{ form.bot_instructions }}
-                                            <small class="text-muted mt-1 d-block">Tell your bot how to behave, e.g. "Be friendly and professional. Only discuss our products."</small>
+                                            <small class="text-muted mt-1 d-block">Define your bot's personality and rules. This makes your AI work like an extension of you &mdash; answering exactly how you would.</small>
                                         </div>
                                         <div class="mb-3">
                                             <label for="id_sample_questions" class="form-label d-flex align-items-center">

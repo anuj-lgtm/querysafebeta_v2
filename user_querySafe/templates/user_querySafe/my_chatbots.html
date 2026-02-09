@@ -31,13 +31,17 @@
         </div>
 
         {% if show_widget_guidance %}
-        <!-- Widget guidance for new users -->
+        <!-- Contextual guidance for users -->
         <div class="mx-3 mt-3">
-          <div class="alert mb-0 py-2 px-3" style="background: #e8f4fd; border: 1px solid #bee5f7; border-radius: 8px;" role="alert">
+          <div class="alert mb-0 py-2 px-3" style="background: {% if has_any_conversations %}#e8f4fd{% else %}#f0ebff{% endif %}; border: 1px solid {% if has_any_conversations %}#bee5f7{% else %}#d4c5f9{% endif %}; border-radius: 8px;" role="alert">
             <div class="d-flex align-items-center">
-              <i class="material-symbols-rounded me-2" style="color: #0c7cd5; font-size: 20px;">lightbulb</i>
-              <span class="text-sm" style="color: #0c5494;">
-                <strong>Next step:</strong> Click <em>Widget Code</em> on any trained chatbot to copy the embed snippet for your website.
+              <i class="material-symbols-rounded me-2" style="color: {% if has_any_conversations %}#0c7cd5{% else %}#7125BE{% endif %}; font-size: 20px;">{% if has_any_conversations %}code{% else %}play_circle{% endif %}</i>
+              <span class="text-sm" style="color: {% if has_any_conversations %}#0c5494{% else %}#4a1582{% endif %};">
+                {% if has_any_conversations %}
+                  <strong>Ready to deploy?</strong> Click <em>Widget Code</em> on any trained chatbot to embed it on your website.
+                {% else %}
+                  <strong>Try your chatbot!</strong> Click the <em>Try Now</em> button to test it with real questions, then embed it on your website.
+                {% endif %}
               </span>
             </div>
           </div>
@@ -101,10 +105,14 @@
                       </span>
                     </td>
                     <td>
-                      <p class="text-xs font-weight-bold mb-0">
+                      <button class="btn btn-link text-xs font-weight-bold mb-0 p-0 text-decoration-none kb-toggle"
+                              data-chatbot-id="{{ bot.chatbot_id }}"
+                              title="Click to view uploaded documents"
+                              style="color: #7125BE; cursor: pointer; border: none; background: none;">
                         <i class="material-symbols-rounded text-primary align-middle" style="font-size:1em;">description</i>
                         {{ bot.chatbotdocument_set.count }} doc{{ bot.chatbotdocument_set.count|pluralize }}
-                      </p>
+                        <i class="material-symbols-rounded align-middle kb-chevron" style="font-size:0.9em; transition: transform 0.2s;">expand_more</i>
+                      </button>
                     </td>
                     <td>
                       <span class="badge badge-sm bg-gradient-info">{{ bot.conversation_count }}</span>
@@ -133,11 +141,11 @@
                         </a>
                         <a target="_blank"
                            href="{% if bot.status == 'trained' %}{% url 'chatbot_view' bot.chatbot_id %}{% endif %}"
-                           class="btn btn-outline-primary btn-xs d-inline-flex align-items-center px-2 py-1 gap-1 mb-0 {% if bot.status != 'trained' %}disabled opacity-50{% endif %}"
+                           class="btn btn-try-now btn-xs d-inline-flex align-items-center px-3 py-1 gap-1 mb-0 {% if bot.status != 'trained' %}disabled opacity-50{% endif %}"
                            style="font-size:0.82rem;"
-                           title="{% if bot.status == 'trained' %}View{% else %}Available after training completes{% endif %}">
-                          <i class="material-symbols-rounded" style="font-size:1.25em;line-height:1;">open_in_new</i>
-                          <span style="font-size:0.78em;">Try Now</span>
+                           title="{% if bot.status == 'trained' %}Try your chatbot{% else %}Available after training completes{% endif %}">
+                          <i class="material-symbols-rounded" style="font-size:1.25em;line-height:1;">play_circle</i>
+                          <span style="font-size:0.78em; font-weight: 600;">Try Now</span>
                         </a>
                         <button type="button"
                                 onclick="confirmStatusChange('{{ bot.chatbot_id }}', '{{ bot.status }}')"
@@ -149,6 +157,21 @@
                           </i>
                           <span style="font-size:0.78em;">{% if bot.status == 'trained' %}Disable{% else %}Enable{% endif %}</span>
                         </button>
+                      </div>
+                    </td>
+                  </tr>
+                  <!-- Expandable Knowledge Base row -->
+                  <tr id="kb-row-{{ bot.chatbot_id }}" class="kb-detail-row" style="display: none;">
+                    <td colspan="8" class="px-4 py-3" style="background: #fafaff; border-bottom: 2px solid #f0f0f5;">
+                      <div class="d-flex align-items-center mb-2">
+                        <i class="material-symbols-rounded me-2" style="color: #7125BE; font-size: 1.1rem;">folder_open</i>
+                        <span class="text-sm font-weight-bold" style="color: #4a1582;">Knowledge Base Documents</span>
+                      </div>
+                      <div id="kb-docs-{{ bot.chatbot_id }}" class="kb-docs-container">
+                        <div class="text-center py-2">
+                          <span class="spinner-border spinner-border-sm text-primary" role="status"></span>
+                          <span class="text-xs text-muted ms-2">Loading documents...</span>
+                        </div>
                       </div>
                     </td>
                   </tr>
@@ -346,6 +369,73 @@
     color: #fff;
   }
 
+  /* Try Now button — visually prominent CTA */
+  .btn-try-now {
+    background: linear-gradient(135deg, #7125BE 0%, #9b59b6 100%);
+    color: #fff !important;
+    border: none;
+    padding: 0.3rem 1rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    transition: all 0.2s ease-in-out;
+    box-shadow: 0 2px 8px rgba(113, 37, 190, 0.25);
+  }
+
+  .btn-try-now:hover {
+    background: linear-gradient(135deg, #5b1d9e 0%, #8e44ad 100%);
+    color: #fff !important;
+    box-shadow: 0 4px 12px rgba(113, 37, 190, 0.35);
+    transform: translateY(-1px);
+  }
+
+  .btn-try-now.disabled {
+    background: #ccc;
+    box-shadow: none;
+  }
+
+  /* Knowledge Base expandable row */
+  .kb-detail-row td {
+    padding: 0 !important;
+  }
+  .kb-detail-row .kb-docs-container {
+    max-height: 200px;
+    overflow-y: auto;
+  }
+  .kb-doc-item {
+    display: flex;
+    align-items: center;
+    padding: 6px 12px;
+    border-radius: 6px;
+    background: #fff;
+    margin-bottom: 4px;
+    border: 1px solid #f0f0f5;
+    font-size: 0.8rem;
+  }
+  .kb-doc-item .doc-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.65rem;
+    font-weight: 700;
+    margin-right: 10px;
+    color: #fff;
+    flex-shrink: 0;
+  }
+  .kb-doc-item .doc-icon.pdf { background: #e53e3e; }
+  .kb-doc-item .doc-icon.docx, .kb-doc-item .doc-icon.doc { background: #3182ce; }
+  .kb-doc-item .doc-icon.xlsx, .kb-doc-item .doc-icon.xls { background: #38a169; }
+  .kb-doc-item .doc-icon.txt { background: #718096; }
+  .kb-doc-item .doc-icon.img { background: #d69e2e; }
+  .kb-doc-item .doc-icon.file { background: #a0aec0; }
+  .kb-chevron-up { transform: rotate(180deg); }
+  .kb-toggle:hover { opacity: 0.8; }
+
   .btn-success {
     background: #43a047;
     color: #fff;
@@ -497,6 +587,62 @@ document.addEventListener('DOMContentLoaded', function() {
       })
       .catch(error => console.error("Error updating chatbot status:", error));
   }, 10000);
+
+  // ── Knowledge Base toggle ──
+  var kbLoadedCache = {};
+  document.querySelectorAll('.kb-toggle').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+      e.preventDefault();
+      var chatbotId = this.getAttribute('data-chatbot-id');
+      var detailRow = document.getElementById('kb-row-' + chatbotId);
+      var chevron = this.querySelector('.kb-chevron');
+      var docsContainer = document.getElementById('kb-docs-' + chatbotId);
+
+      if (detailRow.style.display === 'none') {
+        detailRow.style.display = '';
+        chevron.classList.add('kb-chevron-up');
+
+        // Load documents via AJAX (only once, then cache)
+        if (!kbLoadedCache[chatbotId]) {
+          fetch('/chatbot/api/chatbot/' + chatbotId + '/documents/')
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+              kbLoadedCache[chatbotId] = true;
+              if (data.documents && data.documents.length > 0) {
+                var html = '';
+                data.documents.forEach(function(doc) {
+                  var typeClass = 'file';
+                  var t = doc.type.toLowerCase();
+                  if (t === 'pdf') typeClass = 'pdf';
+                  else if (t === 'docx' || t === 'doc') typeClass = 'docx';
+                  else if (t === 'xlsx' || t === 'xls') typeClass = 'xlsx';
+                  else if (t === 'txt') typeClass = 'txt';
+                  else if (['jpg','jpeg','png','gif','bmp'].indexOf(t) !== -1) typeClass = 'img';
+
+                  html += '<div class="kb-doc-item">' +
+                    '<div class="doc-icon ' + typeClass + '">' + doc.type + '</div>' +
+                    '<div class="flex-grow-1">' +
+                      '<span class="font-weight-bold">' + doc.name + '</span>' +
+                      (doc.size_kb > 0 ? '<span class="text-muted ms-2">(' + (doc.size_kb > 1024 ? (doc.size_kb/1024).toFixed(1) + ' MB' : doc.size_kb + ' KB') + ')</span>' : '') +
+                    '</div>' +
+                    '<span class="text-muted text-xs">' + doc.uploaded_at + '</span>' +
+                  '</div>';
+                });
+                docsContainer.innerHTML = html;
+              } else {
+                docsContainer.innerHTML = '<div class="text-center text-muted text-xs py-2"><i class="material-symbols-rounded align-middle me-1" style="font-size:1rem;">info</i>No documents uploaded yet.</div>';
+              }
+            })
+            .catch(function() {
+              docsContainer.innerHTML = '<div class="text-center text-danger text-xs py-2">Failed to load documents.</div>';
+            });
+        }
+      } else {
+        detailRow.style.display = 'none';
+        chevron.classList.remove('kb-chevron-up');
+      }
+    });
+  });
 
   // Copy snippet function
   window.copySnippet = function(chatbotId) {

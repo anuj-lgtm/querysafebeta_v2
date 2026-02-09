@@ -17,7 +17,7 @@
                         </div>
                         <div class="col">
                             <h3 class="text-white mb-1">{{ user.name }}</h3>
-                            <p class="text-white-50 mb-2">{{ user.email }}</p>
+                            <p class="text-white-50 mb-2" style="word-break: break-all; overflow-wrap: break-word;">{{ user.email }}</p>
                             <div class="d-flex gap-2">
                                 <span class="badge bg-white text-primary">ID: {{ user.user_id }}</span>
                                 <span class="badge bg-success">{{ user.registration_status|title }}</span>
@@ -52,7 +52,7 @@
                                 <i class="material-symbols-rounded text-gradient text-info p-2 me-3">mail</i>
                                 <div>
                                     <small class="text-muted d-block">Email Address</small>
-                                    <span class="font-weight-bold">{{ user.email }}</span>
+                                    <span class="font-weight-bold" style="word-break: break-all; overflow-wrap: break-word; max-width: 220px; display: inline-block;" title="{{ user.email }}">{{ user.email }}</span>
                                 </div>
                             </div>
                         </li>

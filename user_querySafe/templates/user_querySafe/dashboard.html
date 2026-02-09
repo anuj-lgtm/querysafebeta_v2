@@ -167,10 +167,10 @@ Dashboard {{ block.super }}
         <div class="card-header p-3 pt-2">
           <div
             class="icon icon-lg icon-shape bg-gradient-info shadow-info text-center border-radius-xl mt-n4 position-absolute">
-            <i class="material-symbols-rounded opacity-10">message</i>
+            <i class="material-symbols-rounded opacity-10">question_answer</i>
           </div>
           <div class="text-end pt-1">
-            <p class="text-sm mb-0 text-capitalize">Total Messages</p>
+            <p class="text-sm mb-0 text-capitalize">Bot Responses</p>
             <h4 class="mb-0 countup-target" data-target="{{ total_messages }}">0</h4>
           </div>
         </div>
@@ -456,8 +456,10 @@ Dashboard {{ block.super }}
           <i class="material-symbols-rounded text-white me-2" style="font-size:1.2rem;">verified_user</i>
           <span class="text-white fw-bold text-sm">Your Data is Protected</span>
           <span class="ms-3 d-none d-md-inline-flex align-items-center gap-1 text-white-50" style="font-size:0.72rem;">
-            <img src="https://www.gstatic.com/devrel-devsite/prod/v0d244f667a3683225cca86d0ecf9b9b81b1e734e55a030bdcd3f3571c9b0e4d4/cloud/images/favicons/onecloud/super_cloud.png"
-                 alt="Google Cloud" style="height:14px;width:14px;filter:brightness(2);" />
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" style="height:14px;width:14px;" fill="white">
+              <path d="M12.19 2.38a9.344 9.344 0 0 0-9.234 6.893c.053-.02-.055.013 0 0-3.875 2.551-3.922 8.11-.247 10.941l.006-.007-.007.003A6.969 6.969 0 0 0 5.38 22.5h13.12a5.862 5.862 0 0 0 5.5-3.811V18.5a5.875 5.875 0 0 0-3.17-5.203A6.168 6.168 0 0 0 12.19 2.38z" opacity=".3"/>
+              <path d="M19.35 10.04A7.49 7.49 0 0 0 12 4a7.48 7.48 0 0 0-5.94 2.93A5.988 5.988 0 0 0 0 12a5.994 5.994 0 0 0 6 6h13a4.994 4.994 0 0 0 .35-9.96z" fill="white"/>
+            </svg>
             Powered by Google Cloud
           </span>
           <button class="btn btn-link text-white-50 ms-auto p-0 text-xs trust-toggle-btn" type="button"

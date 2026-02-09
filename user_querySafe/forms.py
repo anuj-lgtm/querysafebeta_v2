@@ -92,7 +92,7 @@ class ChatbotCreateForm(forms.ModelForm):
     bot_instructions = forms.CharField(
         widget=forms.Textarea(attrs={
             'class': 'form-control border px-3',
-            'placeholder': 'e.g. Be polite and professional. Answer only about our services. Keep answers concise.',
+            'placeholder': 'E.g., You are a helpful support agent for [Company]. Be friendly and concise. Only answer from the uploaded documents. If unsure, say "I don\'t have that information." Never make up answers.',
             'rows': '3',
             'id': 'id_bot_instructions'
         }),
@@ -160,7 +160,7 @@ class ChatbotEditForm(forms.ModelForm):
     bot_instructions = forms.CharField(
         widget=forms.Textarea(attrs={
             'class': 'form-control border px-3',
-            'placeholder': 'e.g. Be polite and professional. Answer only about our services.',
+            'placeholder': 'E.g., You are a helpful support agent for [Company]. Be friendly and concise. Only answer from the uploaded documents. If unsure, say "I don\'t have that information." Never make up answers.',
             'rows': '3',
             'id': 'id_bot_instructions'
         }),
