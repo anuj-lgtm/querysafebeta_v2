@@ -76,7 +76,7 @@ Dashboard {{ block.super }}
 
           <!-- Action Button -->
           <div class="col-auto ms-auto">
-            <a href="{% url 'create_chatbot' %}" class="btn btn-lg btn-white">
+            <a href="{% url 'create_chatbot' %}" id="tour-new-chatbot-btn" class="btn btn-lg btn-white">
               <i class="material-symbols-rounded align-middle me-2">add</i>
               New Chatbot
             </a>
@@ -673,4 +673,35 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 });
 </script>
+{% if show_tour %}
+<script src="{% static 'user_querySafe/js/tour.js' %}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  QSTour.init({
+    csrfToken: '{{ csrf_token }}',
+    markComplete: false,
+    onFinish: function() {
+      // Set state so create_chatbot page continues the tour
+      localStorage.setItem('qs_tour_state', 'active_create');
+    },
+    steps: [
+      {
+        target: null,
+        icon: 'waving_hand',
+        title: 'Welcome to QuerySafe!',
+        text: "Let\u2019s set up your first AI chatbot in under 5 minutes. I\u2019ll guide you through each step.",
+        position: 'bottom'
+      },
+      {
+        target: '#tour-new-chatbot-btn',
+        icon: 'add_circle',
+        title: 'Create Your Chatbot',
+        text: 'Click here to create your first chatbot. You\u2019ll upload your documents and our AI will learn from them.',
+        position: 'bottom'
+      }
+    ]
+  });
+});
+</script>
+{% endif %}
 {% endblock %}

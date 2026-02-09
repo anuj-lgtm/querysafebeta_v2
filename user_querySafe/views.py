@@ -548,6 +548,8 @@ def dashboard_view(request):
         'has_chatbot': has_chatbot,
         'has_trained_bot': has_trained_bot,
         'steps_complete': steps_complete,
+        # Guided tour (first-time users only)
+        'show_tour': show_onboarding and not user.tour_completed,
     }
 
     return render(request, 'user_querySafe/dashboard.html', context)
@@ -1351,16 +1353,12 @@ def analytics_export_csv(request):
 def contact_form_api(request):
     """Handle contact form submissions from the static public website (querysafe.ai)."""
     # CORS headers for cross-origin requests from querysafe.ai
-    allowed_origins = [
-        'https://querysafe.ai',
-        'https://www.querysafe.ai',
-        'http://localhost',
-        'http://127.0.0.1',
-    ]
     origin = request.META.get('HTTP_ORIGIN', '')
+    is_allowed = origin in ('https://querysafe.ai', 'https://www.querysafe.ai') or \
+        origin.startswith('http://localhost') or origin.startswith('http://127.0.0.1')
 
     def cors_response(response):
-        if origin in allowed_origins:
+        if is_allowed:
             response['Access-Control-Allow-Origin'] = origin
             response['Access-Control-Allow-Methods'] = 'POST, OPTIONS'
             response['Access-Control-Allow-Headers'] = 'Content-Type'
@@ -1417,16 +1415,12 @@ def contact_form_api(request):
 @csrf_exempt
 def bug_report_api(request):
     """Handle bug report submissions from the static public website (querysafe.ai)."""
-    allowed_origins = [
-        'https://querysafe.ai',
-        'https://www.querysafe.ai',
-        'http://localhost',
-        'http://127.0.0.1',
-    ]
     origin = request.META.get('HTTP_ORIGIN', '')
+    is_allowed = origin in ('https://querysafe.ai', 'https://www.querysafe.ai') or \
+        origin.startswith('http://localhost') or origin.startswith('http://127.0.0.1')
 
     def cors_response(response):
-        if origin in allowed_origins:
+        if is_allowed:
             response['Access-Control-Allow-Origin'] = origin
             response['Access-Control-Allow-Methods'] = 'POST, OPTIONS'
             response['Access-Control-Allow-Headers'] = 'Content-Type'
@@ -1534,3 +1528,17 @@ def cron_send_drip_emails(request):
     result = output.getvalue()
 
     return JsonResponse({'success': True, 'output': result})
+
+
+# -----------------------------------------
+# Tour Complete API
+# -----------------------------------------
+@login_required
+def tour_complete_api(request):
+    """Mark the guided tour as completed for the logged-in user."""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+    user = User.objects.get(user_id=request.session['user_id'])
+    user.tour_completed = True
+    user.save(update_fields=['tour_completed'])
+    return JsonResponse({'success': True})

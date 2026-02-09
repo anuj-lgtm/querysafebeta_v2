@@ -518,6 +518,39 @@
             this.innerHTML = '<i class="material-symbols-rounded align-middle">search</i> Preview';
         });
     });
+
+    // ── Guided Tour: Step 3 (auto-continues from dashboard) ──
+    (function() {
+      var tourState = localStorage.getItem('qs_tour_state');
+      // Only show if tour is still active (not completed, not skipped)
+      if (tourState === 'completed') return;
+      // Check if user came from dashboard tour (steps 1-2)
+      if (tourState !== 'active_create') return;
+
+      var tourScript = document.createElement('script');
+      tourScript.src = "{% static 'user_querySafe/js/tour.js' %}";
+      tourScript.onload = function() {
+        // Reset localStorage to prevent re-init loop, then re-mark as active
+        QSTour.init({
+          csrfToken: '{{ csrf_token }}',
+          markComplete: false,
+          onFinish: function() {
+            // Set state so my_chatbots page continues the tour after chatbot creation
+            localStorage.setItem('qs_tour_state', 'active_mychatbots');
+          },
+          steps: [
+            {
+              target: '#id_name',
+              icon: 'edit',
+              title: 'Name Your Chatbot',
+              text: "Give your chatbot a name \u2014 like 'Support Bot' or 'Sales Assistant'. Then add a description and upload your documents below.",
+              position: 'right'
+            }
+          ]
+        });
+      };
+      document.head.appendChild(tourScript);
+    })();
 </script>
 {% endblock %}
 

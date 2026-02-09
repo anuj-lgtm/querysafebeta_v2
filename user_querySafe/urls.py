@@ -50,6 +50,9 @@ urlpatterns = [
     path('api/contact/', views.contact_form_api, name='contact_form_api'),
     path('api/bug-report/', views.bug_report_api, name='bug_report_api'),
 
+    # Internal API
+    path('api/tour-complete/', views.tour_complete_api, name='tour_complete'),
+
     # Cron / Scheduled tasks (protected by CRON_SECRET header)
     path('cron/send-drip-emails/', views.cron_send_drip_emails, name='cron_send_drip_emails'),
 

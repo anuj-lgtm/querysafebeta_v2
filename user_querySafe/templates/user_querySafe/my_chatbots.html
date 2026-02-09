@@ -604,5 +604,48 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   };
 });
+
+  // ── Guided Tour: Steps 4-5 (auto-continues after chatbot creation) ──
+  document.addEventListener('DOMContentLoaded', function() {
+    var tourState = localStorage.getItem('qs_tour_state');
+    if (tourState === 'completed') return;
+    // Show tour on my_chatbots if user just created a chatbot (redirected here)
+    if (tourState !== 'active_mychatbots') return;
+
+    // Find the first chatbot row to target
+    var firstRow = document.querySelector('tbody tr[id^="chatbot-row-"]');
+    if (!firstRow) return;
+
+    var chatbotId = firstRow.id.replace('chatbot-row-', '');
+
+    var tourScript = document.createElement('script');
+    tourScript.src = "{% static 'user_querySafe/js/tour.js' %}";
+    tourScript.onload = function() {
+      // Find the "Try Now" button in the first row's action btn-group
+      var tryNowBtn = firstRow.querySelector('.btn-group .btn-outline-primary');
+      var tryNowSelector = tryNowBtn ? '#chatbot-row-' + chatbotId + ' .btn-group .btn-outline-primary' : null;
+
+      QSTour.init({
+        csrfToken: '{{ csrf_token }}',
+        steps: [
+          {
+            target: tryNowSelector,
+            icon: 'play_circle',
+            title: 'Test Your Chatbot',
+            text: "Your chatbot is ready! Click 'Try Now' to test it with real questions from your documents.",
+            position: 'top'
+          },
+          {
+            target: '#widget-code-' + chatbotId,
+            icon: 'code',
+            title: 'Embed on Your Website',
+            text: "Happy with your bot? Click 'Widget Code' to get the embed snippet. Paste it into your website\u2019s HTML and you\u2019re live!",
+            position: 'top'
+          }
+        ]
+      });
+    };
+    document.head.appendChild(tourScript);
+  });
 </script>
 {% endblock %}
