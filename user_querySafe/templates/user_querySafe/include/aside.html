@@ -145,6 +145,13 @@
         </a>
       </li>
       <li class="nav-item">
+        {% url 'addons' as addons_url %}
+        <a class="nav-link {% if request.path == addons_url %} active bg-gradient-primary text-white {% else %} text-dark {% endif %}" href="{{ addons_url }}">
+          <i class="material-symbols-rounded opacity-5">extension</i>
+          <span class="nav-link-text ms-1">Add-ons</span>
+        </a>
+      </li>
+      <li class="nav-item">
         {% url 'help_support' as help_support_url %}
         <a class="nav-link {% if request.path == help_support_url %}
         active bg-gradient-primary text-white

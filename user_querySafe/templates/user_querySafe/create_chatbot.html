@@ -48,6 +48,57 @@
 
                     <form method="post" enctype="multipart/form-data">
                         {% csrf_token %}
+
+                        <!-- Template Selector Section -->
+                        {% if templates %}
+                        <div class="card shadow-sm mb-4" id="template-selector">
+                            <div class="card-header bg-light">
+                                <h5 class="mb-0">
+                                    <i class="material-symbols-rounded align-middle me-2 border-secondary rounded p-1">auto_awesome</i>
+                                    Choose a Template
+                                    <span class="text-muted ms-1" style="font-weight:400;font-size:0.85em;">(Recommended)</span>
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <p class="text-muted small mb-3">Start with a pre-configured template or build from scratch. Templates set up your bot's personality and starter questions - you still upload your own documents.</p>
+                                <input type="hidden" name="template_id" id="id_template_id" value="">
+                                <div class="row g-3">
+                                    <div class="col-6 col-md-4 col-lg-3">
+                                        <div class="template-card selected p-3 border rounded-3 text-center h-100"
+                                             data-template-id=""
+                                             data-instructions=""
+                                             data-questions=""
+                                             data-description=""
+                                             data-suggested-docs=""
+                                             onclick="selectTemplate(this)">
+                                            <i class="material-symbols-rounded mb-2" style="font-size:36px; color:#6c757d;">edit_note</i>
+                                            <h6 class="mb-1" style="font-size:0.9rem;">Start from Scratch</h6>
+                                            <p class="text-muted small mb-0">Configure everything yourself</p>
+                                        </div>
+                                    </div>
+                                    {% for tmpl in templates %}
+                                    <div class="col-6 col-md-4 col-lg-3">
+                                        <div class="template-card p-3 border rounded-3 text-center h-100 {% if tmpl.is_flagship %}template-flagship{% endif %}"
+                                             data-template-id="{{ tmpl.template_id }}"
+                                             data-instructions="{{ tmpl.bot_instructions|escapejs }}"
+                                             data-questions="{{ tmpl.sample_questions|escapejs }}"
+                                             data-description="{{ tmpl.description|escapejs }}"
+                                             data-suggested-docs="{{ tmpl.suggested_doc_types|escapejs }}"
+                                             onclick="selectTemplate(this)">
+                                            {% if tmpl.is_flagship %}
+                                            <span class="badge bg-gradient-primary position-absolute" style="top:8px;right:8px;font-size:0.6rem;">Flagship</span>
+                                            {% endif %}
+                                            <i class="material-symbols-rounded mb-2" style="font-size:36px; color:#7125BE;">{{ tmpl.icon }}</i>
+                                            <h6 class="mb-1" style="font-size:0.9rem;">{{ tmpl.name }}</h6>
+                                            <p class="text-muted small mb-0">{{ tmpl.description|truncatechars:60 }}</p>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+
                         <!-- Basic Details Section -->
                         <div class="card shadow-sm mb-4">
                             <div class="card-header bg-light">
@@ -110,7 +161,7 @@
                                                 </span>
                                             </label>
                                             {{ form.bot_instructions }}
-                                            <small class="text-muted mt-1 d-block">Define your bot's personality and rules. This makes your AI work like an extension of you &mdash; answering exactly how you would.</small>
+                                            <small class="text-muted mt-1 d-block">Define your bot's personality and rules. This makes your AI work like an extension of you - answering exactly how you would.</small>
                                         </div>
                                         <div class="mb-3">
                                             <label for="id_sample_questions" class="form-label d-flex align-items-center">
@@ -127,7 +178,7 @@
                                                 {{ form.collect_email }}
                                                 <label class="form-check-label fw-bold" for="id_collect_email">
                                                     <i class="material-symbols-rounded align-middle me-1">mail</i>
-                                                    Lead Capture — Collect Visitor Email
+                                                    Lead Capture - Collect Visitor Email
                                                 </label>
                                             </div>
                                             <small class="text-muted d-block mb-2">When enabled, visitors must enter their email before the first chat message. Collected emails appear in your Analytics dashboard.</small>
@@ -193,8 +244,37 @@
                             </div>
                         </div>
 
+                        <!-- Goal Text Input Section (Goal Planner only) -->
+                        <div class="card shadow-sm mb-4" id="goal-input-section" style="display:none;">
+                            <div class="card-header bg-light">
+                                <h5 class="mb-0">
+                                    <i class="material-symbols-rounded align-middle me-2 border-secondary rounded p-1">flag</i>
+                                    What are your goals?
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <p class="text-muted small mb-3">Type your goals below. Be as specific or as general as you like - our AI will assess feasibility, give insights, and create a realistic 30-day action plan.</p>
+                                <textarea name="goal_text" id="id_goal_text" class="form-control border px-3" rows="5"
+                                    placeholder="Example: I want to lose 20 kgs in the next 3 months and build a consistent workout routine..."></textarea>
+
+                                <div class="form-check form-switch mt-3">
+                                    <input class="form-check-input" type="checkbox" name="enable_goal_emails"
+                                           id="id_enable_goal_emails" checked>
+                                    <label class="form-check-label" for="id_enable_goal_emails">
+                                        Send me daily goal emails with my action plan
+                                    </label>
+                                    <small class="text-muted d-block">Get each day's tasks delivered to your inbox every morning.</small>
+                                </div>
+
+                                <p class="text-muted small mt-3 mb-0">
+                                    <i class="material-symbols-rounded align-middle" style="font-size:16px;">attach_file</i>
+                                    You can also upload documents below (optional) to give the AI more context about your goals.
+                                </p>
+                            </div>
+                        </div>
+
                         <!-- Dataset Section -->
-                        <div class="card shadow-sm mb-4">
+                        <div class="card shadow-sm mb-4" id="training-data-section">
                             <div class="card-header bg-light">
                                 <h5 class="mb-0">
                                     <i
@@ -204,6 +284,10 @@
                                 </h5>
                             </div>
                             <div class="card-body">
+                                <div id="suggested-docs-hint" class="alert alert-light border py-2 px-3 mb-3 small" style="display:none;">
+                                    <i class="material-symbols-rounded align-middle me-1" style="font-size:16px;color:#7125BE;">lightbulb</i>
+                                    <span id="suggested-docs-text"></span>
+                                </div>
                                 {% include 'user_querySafe/include/_trust_strip.html' %}
                                 <!-- File Upload Area -->
                                 <div class="upload-area rounded-3 p-4 text-center mb-3">
@@ -290,8 +374,187 @@
 </div>
 {% endblock %}
 
+{% block extra_css %}
+<style>
+.template-card {
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+    background: #fff;
+}
+.template-card:hover {
+    border-color: #7125BE !important;
+    box-shadow: 0 2px 8px rgba(113,37,190,0.15);
+    transform: translateY(-2px);
+}
+.template-card.selected {
+    border-color: #7125BE !important;
+    border-width: 2px !important;
+    background: #f8f4ff;
+    box-shadow: 0 0 0 2px rgba(113,37,190,0.2);
+}
+.template-flagship {
+    border-color: #7125BE !important;
+    background: linear-gradient(135deg, #faf8ff 0%, #f3eeff 100%);
+}
+
+    .alert {
+        position: relative;
+        padding: 1rem 1.5rem;
+        margin-bottom: 1rem;
+        border: 0;
+        border-radius: 0.75rem;
+    }
+
+    .alert.alert-dismissible .btn-close {
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        right: 1rem;
+        padding: 0;
+        background: transparent;
+    }
+
+    .alert.alert-danger {
+        background-image: linear-gradient(195deg, #d01b1b 0%, #a00000 100%);
+        color: #ffffff;
+        box-shadow: 0 4px 20px 0 rgba(0, 0, 0, .14), 0 7px 10px -5px rgba(233, 30, 99, .4);
+    }
+
+    .alert.alert-warning {
+        background-image: linear-gradient(195deg, #fb8c00 0%, #f57c00 100%);
+        color: #ffffff;
+        box-shadow: 0 4px 20px 0 rgba(0, 0, 0, .14), 0 7px 10px -5px rgba(255, 152, 0, .4);
+    }
+
+    .alert .alert-link.text-white {
+        border-bottom: 1px solid rgba(255, 255, 255, .5);
+    }
+
+    .alert .alert-link.text-white:hover {
+        border-bottom: 1px solid #ffffff;
+        opacity: .8;
+    }
+
+    .btn-close {
+        color: #ffffff;
+    }
+
+    .logo-preview {
+        position: relative;
+        width: 150px;
+        height: 150px;
+        margin: 0 auto;
+        border-radius: 50%;
+        overflow: hidden;
+        box-shadow: 0 4px 20px 0 rgba(0, 0, 0, .14);
+        transition: transform 0.3s ease;
+    }
+
+    .logo-preview:hover {
+        transform: scale(1.05);
+    }
+
+    .logo-preview img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        border: 2px solid #fff;
+    }
+
+    .btn-outline-primary:hover .material-symbols-rounded {
+        transform: translateY(-2px);
+        transition: transform 0.3s ease;
+    }
+
+    .supported-files-info {
+        border: 1px solid rgba(0, 0, 0, 0.1);
+    }
+
+    .supported-files-info .badge {
+        font-weight: 400;
+        font-size: 0.85rem;
+        transition: transform 0.2s ease;
+    }
+
+    .supported-files-info .badge:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    }
+
+    .supported-files-info .material-symbols-rounded {
+        font-size: 16px;
+        vertical-align: middle;
+        margin-right: 4px;
+    }
+
+    .upload-area {
+        border: 2px dashed #dee2e6;
+        background-color: #f8f9fa;
+        transition: all 0.3s ease;
+        padding: 1.5rem !important;
+    }
+
+    .upload-area:hover {
+        border-color: #0d6efd;
+        background-color: #f1f5ff;
+    }
+</style>
+{% endblock %}
+
 {% block extra_js %}
 <script>
+    // Decode Django escapejs output: converts \uXXXX sequences back to actual characters
+    function decodeEscapeJs(str) {
+        if (!str) return '';
+        try {
+            return JSON.parse('"' + str + '"');
+        } catch(e) {
+            // Fallback: just return the raw string
+            return str;
+        }
+    }
+
+    function selectTemplate(card) {
+        document.querySelectorAll('.template-card').forEach(function(c) { c.classList.remove('selected'); });
+        card.classList.add('selected');
+        document.getElementById('id_template_id').value = card.dataset.templateId;
+
+        var instrField = document.getElementById('id_bot_instructions');
+        var questionsField = document.getElementById('id_sample_questions');
+        var descField = document.getElementById('id_description');
+        var hint = document.getElementById('suggested-docs-hint');
+        var hintText = document.getElementById('suggested-docs-text');
+        var goalSection = document.getElementById('goal-input-section');
+        var trainingHeader = document.querySelector('#training-data-section .card-header h5 .text-muted');
+
+        if (card.dataset.templateId) {
+            instrField.value = decodeEscapeJs(card.dataset.instructions);
+            questionsField.value = decodeEscapeJs(card.dataset.questions);
+            descField.value = decodeEscapeJs(card.dataset.description);
+            if (card.dataset.suggestedDocs && hint) {
+                hintText.textContent = 'Suggested documents: ' + decodeEscapeJs(card.dataset.suggestedDocs);
+                hint.style.display = 'block';
+            }
+        } else {
+            instrField.value = '';
+            questionsField.value = '';
+            descField.value = '';
+            if (hint) hint.style.display = 'none';
+        }
+
+        // Show goal text input for Goal Planner template (TMPL01)
+        if (card.dataset.templateId === 'TMPL01') {
+            goalSection.style.display = 'block';
+            if (trainingHeader) trainingHeader.textContent = '(Optional)';
+        } else {
+            goalSection.style.display = 'none';
+            if (trainingHeader) trainingHeader.textContent = '(Optional if URLs provided above)';
+        }
+
+        document.getElementById('id_name').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
     function previewLogo(input) {
         const logoError = document.getElementById('logo-error');
         const logoPreview = document.getElementById('logo-preview');
@@ -465,16 +728,23 @@
         handleFiles(files);
     });
 
-    // Form validation on submit — allow if files OR URLs provided.
+    // Form validation on submit - allow if files, URLs, or goal text (for Goal Planner) provided.
     document.querySelector('form').addEventListener('submit', function (e) {
         const errorContainer = document.getElementById('file-error');
         const hasFiles = accumulatedFiles.files.length > 0;
         const hasUrls = document.getElementById('id_website_urls').value.trim().length > 0;
         const hasSitemap = document.getElementById('id_sitemap_url').value.trim().length > 0;
+        const isGoalPlanner = document.getElementById('id_template_id').value === 'TMPL01';
+        const goalTextEl = document.getElementById('id_goal_text');
+        const hasGoalText = goalTextEl && goalTextEl.value.trim().length > 0;
 
-        if (!hasFiles && !hasUrls && !hasSitemap) {
+        if (!hasFiles && !hasUrls && !hasSitemap && !(isGoalPlanner && hasGoalText)) {
             e.preventDefault();
-            errorContainer.textContent = 'Please upload at least one file or provide website URLs.';
+            if (isGoalPlanner) {
+                errorContainer.textContent = 'Please type your goals above, or upload documents / provide URLs.';
+            } else {
+                errorContainer.textContent = 'Please upload at least one file or provide website URLs.';
+            }
             errorContainer.style.display = 'block';
         } else if (accumulatedFiles.files.length > allowedDocs) {
             e.preventDefault();
@@ -547,7 +817,7 @@
               target: '#id_name',
               icon: 'edit',
               title: 'Name Your Chatbot',
-              text: "Give your chatbot a name \u2014 like 'Support Bot' or 'Sales Assistant'. Then add a description and upload your documents below.",
+              text: "Give your chatbot a name - like 'Support Bot' or 'Sales Assistant'. Then add a description and upload your documents below.",
               position: 'right'
             }
           ]
@@ -556,110 +826,4 @@
       document.head.appendChild(tourScript);
     })();
 </script>
-{% endblock %}
-
-{% block extra_css %}
-<style>
-    .alert {
-        position: relative;
-        padding: 1rem 1.5rem;
-        margin-bottom: 1rem;
-        border: 0;
-        border-radius: 0.75rem;
-    }
-
-    .alert.alert-dismissible .btn-close {
-        position: absolute;
-        top: 50%;
-        transform: translateY(-50%);
-        right: 1rem;
-        padding: 0;
-        background: transparent;
-    }
-
-    .alert.alert-danger {
-        background-image: linear-gradient(195deg, #d01b1b 0%, #a00000 100%);
-        color: #ffffff;
-        box-shadow: 0 4px 20px 0 rgba(0, 0, 0, .14), 0 7px 10px -5px rgba(233, 30, 99, .4);
-    }
-
-    .alert.alert-warning {
-        background-image: linear-gradient(195deg, #fb8c00 0%, #f57c00 100%);
-        color: #ffffff;
-        box-shadow: 0 4px 20px 0 rgba(0, 0, 0, .14), 0 7px 10px -5px rgba(255, 152, 0, .4);
-    }
-
-    .alert .alert-link.text-white {
-        border-bottom: 1px solid rgba(255, 255, 255, .5);
-    }
-
-    .alert .alert-link.text-white:hover {
-        border-bottom: 1px solid #ffffff;
-        opacity: .8;
-    }
-
-    .btn-close {
-        color: #ffffff;
-    }
-
-    .logo-preview {
-        position: relative;
-        width: 150px;
-        height: 150px;
-        margin: 0 auto;
-        border-radius: 50%;
-        overflow: hidden;
-        box-shadow: 0 4px 20px 0 rgba(0, 0, 0, .14);
-        transition: transform 0.3s ease;
-    }
-
-    .logo-preview:hover {
-        transform: scale(1.05);
-    }
-
-    .logo-preview img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-        border: 2px solid #fff;
-    }
-
-    .btn-outline-primary:hover .material-symbols-rounded {
-        transform: translateY(-2px);
-        transition: transform 0.3s ease;
-    }
-
-    .supported-files-info {
-        border: 1px solid rgba(0, 0, 0, 0.1);
-    }
-
-    .supported-files-info .badge {
-        font-weight: 400;
-        font-size: 0.85rem;
-        transition: transform 0.2s ease;
-    }
-
-    .supported-files-info .badge:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-    }
-
-    .supported-files-info .material-symbols-rounded {
-        font-size: 16px;
-        vertical-align: middle;
-        margin-right: 4px;
-    }
-
-    .upload-area {
-        border: 2px dashed #dee2e6;
-        background-color: #f8f9fa;
-        transition: all 0.3s ease;
-        padding: 1.5rem !important;
-    }
-
-    .upload-area:hover {
-        border-color: #0d6efd;
-        background-color: #f1f5ff;
-    }
-</style>
 {% endblock %}

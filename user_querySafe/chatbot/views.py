@@ -11,7 +11,7 @@ from django.views.decorators.http import require_POST
 from django.shortcuts import get_object_or_404, redirect, render
 from user_querySafe.decorators import login_required
 from user_querySafe.forms import ChatbotCreateForm, ChatbotEditForm
-from user_querySafe.models import Activity, Chatbot, ChatbotDocument, Conversation, User, QSPlanAllot
+from user_querySafe.models import Activity, Chatbot, ChatbotDocument, ChatbotTemplate, ChatbotEmailReport, Conversation, GoalPlan, User, QSPlanAllot
 from .pipeline_processor import run_pipeline_background, PDF_DIR
 
 
@@ -76,7 +76,32 @@ def create_chatbot(request):
         if form.is_valid():
             chatbot = form.save(commit=False)
             chatbot.user = user
+
+            # Apply template if selected
+            template_id = request.POST.get('template_id', '').strip()
+            if template_id:
+                try:
+                    template = ChatbotTemplate.objects.get(template_id=template_id, is_active=True)
+                    chatbot.template = template
+                    if not chatbot.bot_instructions.strip():
+                        chatbot.bot_instructions = template.bot_instructions
+                    if not chatbot.sample_questions.strip():
+                        chatbot.sample_questions = template.sample_questions
+                    if not chatbot.description.strip():
+                        chatbot.description = template.description
+                except ChatbotTemplate.DoesNotExist:
+                    pass
+
             chatbot.save()
+
+            # Handle goal text for Goal Planner template
+            goal_text = request.POST.get('goal_text', '').strip()
+            enable_goal_emails = 'enable_goal_emails' in request.POST
+            if goal_text and chatbot.template and chatbot.template.template_id == 'TMPL01':
+                from django.core.files.base import ContentFile
+                content = f"USER GOALS:\n\n{goal_text}"
+                doc_file = ContentFile(content.encode('utf-8'), name=f"{chatbot.name}-goals.txt")
+                ChatbotDocument.objects.create(chatbot=chatbot, document=doc_file)
 
             # Process document uploads
             uploaded_docs = request.FILES.getlist('pdf_files')
@@ -127,15 +152,45 @@ def create_chatbot(request):
             except Exception:
                 pass  # ChatbotURL model not yet available
 
-            if successful_uploads > 0 or url_count > 0:
-                # Train synchronously so Cloud Run keeps CPU allocated
-                from .pipeline_processor import process_pipeline
-                try:
-                    process_pipeline(chatbot.chatbot_id)
-                    messages.success(request, f"Chatbot '{chatbot.name}' created and trained successfully!")
-                except Exception as e:
-                    logger.exception("Pipeline failed for chatbot %s", chatbot.chatbot_id)
-                    messages.warning(request, f"Chatbot '{chatbot.name}' created but training encountered an issue. You can retrain from the Edit page.")
+            # For Goal Planner with text-only (no files/URLs), we still need to run the pipeline
+            has_goal_text_only = (goal_text and chatbot.template
+                                  and chatbot.template.template_id == 'TMPL01'
+                                  and successful_uploads == 0 and url_count == 0)
+
+            if successful_uploads > 0 or url_count > 0 or has_goal_text_only:
+                # Train in background thread so the page redirects immediately
+                from .pipeline_processor import run_pipeline_background
+
+                has_docs = ChatbotDocument.objects.filter(chatbot=chatbot).exists() or url_count > 0
+                is_goal_planner = (chatbot.template and chatbot.template.is_flagship
+                                   and chatbot.template.template_id == 'TMPL01')
+
+                # Build post-pipeline callback for Goal Planner
+                post_callback = None
+                if is_goal_planner:
+                    _goal_text = goal_text or None
+                    _chatbot = chatbot
+                    _user = user
+                    _enable = enable_goal_emails
+                    def _goal_callback():
+                        try:
+                            _generate_goal_plan(_chatbot, _user, goal_text=_goal_text)
+                            GoalPlan.objects.filter(chatbot=_chatbot).update(enable_emails=_enable)
+                        except Exception:
+                            logger.exception("Goal plan generation failed for %s", _chatbot.chatbot_id)
+                    post_callback = _goal_callback
+
+                if has_docs:
+                    run_pipeline_background(chatbot.chatbot_id, post_callback=post_callback)
+                elif is_goal_planner and post_callback:
+                    # Text-only goal planner with no docs - just generate the plan
+                    import threading
+                    def _bg_goal():
+                        post_callback()
+                        Chatbot.objects.filter(chatbot_id=chatbot.chatbot_id).update(status='trained')
+                    threading.Thread(target=_bg_goal, daemon=False).start()
+
+                messages.success(request, f"Chatbot '{chatbot.name}' created! Training is in progress - this usually takes a few minutes.")
                 return redirect('my_chatbots')
             else:
                 messages.error(request, "No documents or URLs were provided.")
@@ -144,11 +199,90 @@ def create_chatbot(request):
     else:
         form = ChatbotCreateForm()
 
+    templates = ChatbotTemplate.objects.filter(is_active=True).order_by('sort_order', 'name')
     context = {
         'form': form,
         'active_plan': active_plan,
+        'templates': templates,
     }
     return render(request, 'user_querySafe/create_chatbot.html', context)
+
+
+def _generate_goal_plan(chatbot, user, goal_text=None):
+    """Generate a 30-day goal plan. Uses goal_text if provided, else document chunks."""
+    from django.conf import settings
+    from google import genai
+
+    if goal_text:
+        # Direct text input from user - use as-is
+        document_text = goal_text
+    else:
+        # Read from trained document chunks
+        meta_path = os.path.join(settings.META_DIR, f"{chatbot.chatbot_id}-chunks.json")
+        if not os.path.exists(meta_path):
+            raise FileNotFoundError("No training data found for this chatbot")
+
+        with open(meta_path, 'r', encoding='utf-8') as f:
+            chunk_data = json.load(f)
+
+        # Extract text content from chunks (limit to avoid exceeding context)
+        document_text = "\n".join([
+            entry.get('content', str(entry)) if isinstance(entry, dict) else str(entry)
+            for entry in chunk_data[:50]
+        ])[:15000]  # Cap at ~15k chars
+
+    prompt = f"""You are a goal planning expert. Based on the user's goals below, create a detailed 30-day action plan.
+
+USER'S GOALS:
+{document_text}
+
+INSTRUCTIONS:
+- First assess if the goals are realistic for a 30-day timeframe. If not, adjust the scope and clearly explain what can be achieved in 30 days versus what requires a longer commitment.
+- Provide a plan_summary with your honest assessment, any adjusted expectations, and the overall plan description (2-4 sentences).
+- Create exactly 30 days of planning.
+- Each day should have a clear title, 2-3 specific actionable tasks, and a focus area.
+- Tasks should be concrete and achievable in the allocated day.
+- Build progressively - earlier days focus on foundation and habits, later days on execution and consistency.
+- Include weekly review days (days 7, 14, 21, 28) for reflection and adjustment.
+- Be motivational but realistic - do not promise unrealistic outcomes.
+
+OUTPUT FORMAT (strict JSON, no markdown):
+{{"plan_summary": "Honest assessment and plan overview", "days": [{{"day": 1, "title": "Day title", "focus": "Focus area", "tasks": ["Task 1", "Task 2", "Task 3"], "motivation": "Short motivational message"}}]}}
+
+Return ONLY valid JSON, no markdown code fences."""
+
+    client = genai.Client(
+        vertexai=True,
+        project=settings.PROJECT_ID,
+        location=settings.GEMINI_LOCATION
+    )
+    response = client.models.generate_content(
+        model=settings.GEMINI_CHAT_MODEL,
+        contents=[{"role": "user", "parts": [{"text": prompt}]}],
+        config={"temperature": 0.4},
+    )
+
+    plan_text = response.text.strip()
+    # Remove markdown code fences if present
+    if plan_text.startswith('```'):
+        plan_text = plan_text.split('\n', 1)[1]
+    if plan_text.endswith('```'):
+        plan_text = plan_text.rsplit('```', 1)[0]
+    plan_text = plan_text.strip()
+
+    plan_data = json.loads(plan_text)
+
+    GoalPlan.objects.update_or_create(
+        chatbot=chatbot,
+        defaults={
+            'recipient_email': user.email,
+            'plan_data': plan_data,
+            'total_days': len(plan_data.get('days', [])),
+            'current_day': 0,
+            'status': 'active',
+        }
+    )
+
 
 @login_required
 def change_chatbot_status(request):
@@ -325,6 +459,40 @@ def edit_chatbot(request, chatbot_id):
             except Exception:
                 pass  # ChatbotURL model not yet available
 
+            # Handle email report subscription
+            enable_reports = request.POST.get('enable_email_reports') == 'on'
+            report_frequency = request.POST.get('report_frequency', 'weekly')
+            report_email = request.POST.get('report_email', user.email).strip()
+
+            if enable_reports:
+                ChatbotEmailReport.objects.update_or_create(
+                    chatbot=chatbot,
+                    defaults={
+                        'recipient_email': report_email or user.email,
+                        'frequency': report_frequency,
+                        'status': 'active',
+                        'expiry_notice_sent': False,
+                    }
+                )
+            else:
+                ChatbotEmailReport.objects.filter(chatbot=chatbot).delete()
+
+            # Handle goal plan settings if applicable
+            try:
+                goal_plan = GoalPlan.objects.get(chatbot=chatbot)
+                goal_email = request.POST.get('goal_email', '').strip()
+                goal_time = request.POST.get('goal_preferred_time', '')
+                goal_plan.enable_emails = 'enable_goal_emails' in request.POST
+                if goal_email:
+                    goal_plan.recipient_email = goal_email
+                if goal_time:
+                    from datetime import time as dt_time
+                    hour, minute = goal_time.split(':')
+                    goal_plan.preferred_time = dt_time(int(hour), int(minute))
+                goal_plan.save()
+            except GoalPlan.DoesNotExist:
+                pass
+
             Activity.log(user, f'Edited chatbot {chatbot.name}',
                          activity_type='info', icon='edit')
             messages.success(request, f"Chatbot '{chatbot.name}' updated successfully!")
@@ -332,12 +500,26 @@ def edit_chatbot(request, chatbot_id):
     else:
         form = ChatbotEditForm(instance=chatbot)
 
+    # Fetch email report and goal plan for context
+    try:
+        email_report = ChatbotEmailReport.objects.get(chatbot=chatbot)
+    except ChatbotEmailReport.DoesNotExist:
+        email_report = None
+
+    try:
+        goal_plan = GoalPlan.objects.get(chatbot=chatbot)
+    except GoalPlan.DoesNotExist:
+        goal_plan = None
+
     context = {
         'form': form,
         'chatbot': chatbot,
         'existing_docs': existing_docs,
         'existing_urls': existing_urls,
         'active_plan': active_plan,
+        'email_report': email_report,
+        'goal_plan': goal_plan,
+        'user': user,
     }
     return render(request, 'user_querySafe/edit_chatbot.html', context)
 
@@ -386,14 +568,10 @@ def retrain_chatbot(request, chatbot_id):
     chatbot.status = 'training'
     chatbot.save()
 
-    # Train synchronously so Cloud Run keeps CPU allocated
-    from .pipeline_processor import process_pipeline
-    try:
-        process_pipeline(chatbot.chatbot_id)
-        messages.success(request, f"'{chatbot.name}' retrained successfully!")
-    except Exception as e:
-        logger.exception("Pipeline failed for chatbot %s", chatbot.chatbot_id)
-        messages.error(request, f"Retraining failed. Please try again.")
+    # Train in background thread so the page redirects immediately
+    from .pipeline_processor import run_pipeline_background
+    run_pipeline_background(chatbot.chatbot_id)
+    messages.success(request, f"'{chatbot.name}' is being retrained! This usually takes a few minutes.")
 
     Activity.log(user, f'Retrained chatbot {chatbot.name}',
                  activity_type='info', icon='refresh')

@@ -109,7 +109,7 @@
                                                 {{ form.collect_email }}
                                                 <label class="form-check-label fw-bold" for="id_collect_email">
                                                     <i class="material-symbols-rounded align-middle me-1">mail</i>
-                                                    Lead Capture — Collect Visitor Email
+                                                    Lead Capture - Collect Visitor Email
                                                 </label>
                                             </div>
                                             <small class="text-muted d-block mb-2">When enabled, visitors must enter their email before the first chat message. Collected emails appear in your Analytics dashboard.</small>
@@ -270,6 +270,119 @@
                                 </div>
                             </div>
                         </div>
+
+                        <!-- Email Reports Section -->
+                        <div class="card shadow-sm mb-4">
+                            <div class="card-header bg-light">
+                                <h5 class="mb-0">
+                                    <i class="material-symbols-rounded align-middle me-2 border-secondary rounded p-1">mail</i>
+                                    Email Reports
+                                    <span class="badge bg-gradient-info ms-2" style="font-size:0.6rem;">New</span>
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <p class="text-muted small mb-3">Get periodic AI-generated reports about your chatbot's usage, top questions, and insights delivered to your inbox.</p>
+                                <div class="form-check form-switch mb-3">
+                                    <input class="form-check-input" type="checkbox" id="enable_email_reports"
+                                           name="enable_email_reports" {% if email_report %}checked{% endif %}>
+                                    <label class="form-check-label fw-bold" for="enable_email_reports">
+                                        Enable periodic email reports for this chatbot
+                                    </label>
+                                </div>
+                                <div id="email-report-options" style="display:{% if email_report %}block{% else %}none{% endif %};">
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">Report Frequency</label>
+                                            <div class="d-flex gap-3">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="radio" name="report_frequency"
+                                                           value="daily" id="freq_daily" {% if not email_report or email_report.frequency == 'daily' %}checked{% endif %}>
+                                                    <label class="form-check-label" for="freq_daily">Daily</label>
+                                                </div>
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="radio" name="report_frequency"
+                                                           value="weekly" id="freq_weekly" {% if email_report and email_report.frequency == 'weekly' %}checked{% endif %}>
+                                                    <label class="form-check-label" for="freq_weekly">Weekly</label>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label for="report_email" class="form-label">Send reports to</label>
+                                            <input type="email" class="form-control border px-3" id="report_email"
+                                                   name="report_email" value="{{ email_report.recipient_email|default:user.email }}"
+                                                   placeholder="your@email.com">
+                                        </div>
+                                    </div>
+                                    {% if email_report and email_report.last_sent_at %}
+                                    <div class="text-muted small">
+                                        <i class="material-symbols-rounded align-middle" style="font-size:14px;">schedule</i>
+                                        Last report sent: {{ email_report.last_sent_at|timesince }} ago
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        <script>
+                        document.getElementById('enable_email_reports').addEventListener('change', function() {
+                            document.getElementById('email-report-options').style.display = this.checked ? 'block' : 'none';
+                        });
+                        </script>
+
+                        {% if goal_plan %}
+                        <!-- 30-Day Goal Plan Section -->
+                        <div class="card shadow-sm mb-4">
+                            <div class="card-header bg-light">
+                                <h5 class="mb-0">
+                                    <i class="material-symbols-rounded align-middle me-2 border-secondary rounded p-1">flag</i>
+                                    30-Day Goal Plan
+                                    <span class="badge {% if goal_plan.status == 'active' %}bg-gradient-success{% elif goal_plan.status == 'completed' %}bg-gradient-info{% else %}bg-gradient-secondary{% endif %} ms-2" style="font-size:0.6rem;">{{ goal_plan.status|title }}</span>
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row mb-3">
+                                    <div class="col-md-4">
+                                        <label class="form-label">Progress</label>
+                                        <div class="progress" style="height:10px;">
+                                            <div class="progress-bar bg-gradient-primary" style="width:{% widthratio goal_plan.current_day goal_plan.total_days 100 %}%;"></div>
+                                        </div>
+                                        <small class="text-muted">Day {{ goal_plan.current_day }} of {{ goal_plan.total_days }}</small>
+                                    </div>
+                                    <div class="col-md-8">
+                                        <div class="form-check form-switch mt-2">
+                                            <input class="form-check-input" type="checkbox" name="enable_goal_emails"
+                                                   id="id_enable_goal_emails" {% if goal_plan.enable_emails %}checked{% endif %}>
+                                            <label class="form-check-label" for="id_enable_goal_emails">
+                                                Send daily goal emails
+                                            </label>
+                                            <small class="text-muted d-block">Receive each day's tasks in your inbox every morning.</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row mb-3" id="goal-email-options" {% if not goal_plan.enable_emails %}style="display:none;"{% endif %}>
+                                    <div class="col-md-6">
+                                        <label for="goal_email" class="form-label">Daily email to</label>
+                                        <input type="email" class="form-control border px-3" name="goal_email"
+                                               value="{{ goal_plan.recipient_email }}">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="goal_preferred_time" class="form-label">Preferred time (IST)</label>
+                                        <input type="time" class="form-control border px-3" name="goal_preferred_time"
+                                               value="{{ goal_plan.preferred_time|time:'H:i' }}">
+                                    </div>
+                                </div>
+                                {% if goal_plan.plan_data.plan_summary %}
+                                <div class="alert alert-light border mb-0">
+                                    <strong>Plan Summary:</strong> {{ goal_plan.plan_data.plan_summary }}
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <script>
+                        document.getElementById('id_enable_goal_emails').addEventListener('change', function() {
+                            document.getElementById('goal-email-options').style.display = this.checked ? '' : 'none';
+                        });
+                        </script>
+                        {% endif %}
 
                         <!-- Action Buttons -->
                         <div class="d-flex gap-3 mb-4">

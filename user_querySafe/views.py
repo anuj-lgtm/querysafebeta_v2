@@ -634,6 +634,8 @@ def chatbot_view(request, chatbot_id):
         'chatbot_id': chatbot.chatbot_id,
         'sample_questions': sample_questions,
         'hide_branding': hide_branding,
+        'collect_email': chatbot.collect_email,
+        'collect_email_message': chatbot.collect_email_message or 'Please enter your email to get started.',
     }
 
     return render(request, 'user_querySafe/chatbot-view.html', context)
@@ -954,6 +956,7 @@ def serve_widget_js(request, chatbot_id):
     response['Access-Control-Allow-Origin'] = '*'
     response['Access-Control-Allow-Methods'] = 'GET, OPTIONS'
     response['Access-Control-Allow-Headers'] = 'Content-Type'
+    response['Cache-Control'] = 'no-cache, no-store, must-revalidate'
     return response
 
 def get_widget_code(chatbot_id, base_url):
@@ -1528,6 +1531,36 @@ def cron_send_drip_emails(request):
     result = output.getvalue()
 
     return JsonResponse({'success': True, 'output': result})
+
+
+@csrf_exempt
+def cron_send_chatbot_reports(request):
+    """HTTP trigger for Cloud Scheduler to send chatbot email reports."""
+    cron_secret = getattr(settings, 'CRON_SECRET', '')
+    request_secret = request.headers.get('X-Cron-Secret', '')
+    if not cron_secret or request_secret != cron_secret:
+        return JsonResponse({'error': 'Unauthorized'}, status=403)
+
+    from django.core.management import call_command
+    from io import StringIO
+    output = StringIO()
+    call_command('send_chatbot_reports', stdout=output)
+    return JsonResponse({'success': True, 'output': output.getvalue()})
+
+
+@csrf_exempt
+def cron_send_goal_plan_emails(request):
+    """HTTP trigger for Cloud Scheduler to send daily goal plan emails."""
+    cron_secret = getattr(settings, 'CRON_SECRET', '')
+    request_secret = request.headers.get('X-Cron-Secret', '')
+    if not cron_secret or request_secret != cron_secret:
+        return JsonResponse({'error': 'Unauthorized'}, status=403)
+
+    from django.core.management import call_command
+    from io import StringIO
+    output = StringIO()
+    call_command('send_goal_plan_emails', stdout=output)
+    return JsonResponse({'success': True, 'output': output.getvalue()})
 
 
 # -----------------------------------------

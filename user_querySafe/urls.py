@@ -55,5 +55,7 @@ urlpatterns = [
 
     # Cron / Scheduled tasks (protected by CRON_SECRET header)
     path('cron/send-drip-emails/', views.cron_send_drip_emails, name='cron_send_drip_emails'),
+    path('cron/send-chatbot-reports/', views.cron_send_chatbot_reports, name='cron_send_chatbot_reports'),
+    path('cron/send-goal-plan-emails/', views.cron_send_goal_plan_emails, name='cron_send_goal_plan_emails'),
 
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

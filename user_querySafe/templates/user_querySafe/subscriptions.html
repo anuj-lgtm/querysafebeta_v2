@@ -222,17 +222,17 @@
 
           <div class="plan-price-row">
             {% if plan.is_trial and plan.parent_plan %}
-            <span class="price-strike">${{ plan.parent_plan.amount_usd|floatformat:0 }}</span>
+            <span class="price-strike">&#8377;{{ plan.parent_plan.amount|floatformat:0 }}</span>
             {% endif %}
-            <span class="price-main">${{ plan.amount_usd|floatformat:0 }}</span>
+            <span class="price-main">&#8377;{{ plan.amount|floatformat:0 }}</span>
             <span class="price-period">/month</span>
           </div>
           <div class="plan-inr">
             or
             {% if plan.is_trial and plan.parent_plan %}
-            <span class="inr-strike">&#8377;{{ plan.parent_plan.amount|floatformat:0 }}</span>
+            <span class="inr-strike">${{ plan.parent_plan.amount_usd|floatformat:0 }}</span>
             {% endif %}
-            <span class="fw-bold">&#8377;{{ plan.amount|floatformat:0 }}</span>/mo
+            <span class="fw-bold">${{ plan.amount_usd|floatformat:0 }}</span>/mo
           </div>
         </div>
 

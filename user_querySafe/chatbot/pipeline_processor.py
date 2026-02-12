@@ -592,18 +592,31 @@ def process_pipeline(chatbot_id):
 # =====================================================================
 _pipeline_locks = {}
 
-def run_pipeline_background(chatbot_id):
+def run_pipeline_background(chatbot_id, post_callback=None):
+    """Run the training pipeline in a background thread.
+
+    Args:
+        chatbot_id: The chatbot to train.
+        post_callback: Optional callable invoked after a successful pipeline run.
+                       Use this for tasks that depend on training output (e.g. goal plan generation).
+    """
     from threading import Thread, Lock
 
     lock = _pipeline_locks.setdefault(chatbot_id, Lock())
     if lock.locked():
-        print(f"Pipeline already running for chatbot {chatbot_id}.")
+        logger.info("Pipeline already running for chatbot %s.", chatbot_id)
         return
 
     def pipeline_wrapper():
         with lock:
             try:
                 process_pipeline(chatbot_id)
+                # Run post-pipeline callback (e.g. goal plan generation)
+                if post_callback:
+                    try:
+                        post_callback()
+                    except Exception:
+                        logger.exception("Post-pipeline callback failed for chatbot %s", chatbot_id)
             except Exception as e:
                 logger.exception("Pipeline failed for chatbot %s", chatbot_id)
                 try:

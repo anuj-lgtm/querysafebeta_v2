@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.utils.html import format_html
-from .models import User, Chatbot, ChatbotDocument, ChatbotURL, Conversation, Message, HelpSupportRequest, ChatbotFeedback, EmailOTP, Activity, QSPlan, QSCheckout, QSBillingDetails, QSOrder, QSPlanAllot, VisionAPIUsage, BugReport, ScheduledEmail
+from .models import User, Chatbot, ChatbotDocument, ChatbotURL, Conversation, Message, HelpSupportRequest, ChatbotFeedback, EmailOTP, Activity, QSPlan, QSCheckout, QSBillingDetails, QSOrder, QSPlanAllot, VisionAPIUsage, BugReport, ScheduledEmail, ChatbotTemplate, ChatbotEmailReport, GoalPlan, WebSearchUsage, QSAddon, QSAddonPurchase
 
 @admin.register(User)
 class UserAdmin(admin.ModelAdmin):
@@ -22,10 +22,20 @@ class UserAdmin(admin.ModelAdmin):
 
 @admin.register(Chatbot)
 class ChatbotAdmin(admin.ModelAdmin):
-    list_display = ('chatbot_id', 'user', 'name', 'status_badge', 'dataset_name', 'last_trained_at', 'created_at')
-    list_filter = ('status', 'created_at')
-    search_fields = ('chatbot_id', 'name', 'description', 'dataset_name')
+    list_display = ('chatbot_id', 'user', 'name', 'template_type', 'status_badge', 'dataset_name', 'last_trained_at', 'created_at')
+    list_filter = ('status', 'template', 'created_at')
+    search_fields = ('chatbot_id', 'name', 'description', 'dataset_name', 'template__name')
     readonly_fields = ('chatbot_id', 'created_at', 'last_trained_at')
+
+    def template_type(self, obj):
+        if obj.template:
+            return format_html(
+                '<span style="color:#7125BE;font-weight:500;">{}</span>',
+                obj.template.name
+            )
+        return format_html('<span style="color:#6c757d;">From Scratch</span>')
+    template_type.short_description = 'Type'
+    template_type.admin_order_field = 'template__name'
 
     def status_badge(self, obj):
         colors = {
@@ -194,4 +204,58 @@ class ScheduledEmailAdmin(admin.ModelAdmin):
     list_display = ('user', 'email_type', 'scheduled_at', 'sent_at', 'status', 'created_at')
     list_filter = ('email_type', 'status', 'scheduled_at')
     search_fields = ('user__email', 'user__name')
+    readonly_fields = ('created_at',)
+
+
+@admin.register(ChatbotTemplate)
+class ChatbotTemplateAdmin(admin.ModelAdmin):
+    list_display = ('template_id', 'name', 'category', 'icon', 'usage_count', 'is_active', 'is_flagship', 'sort_order', 'created_at')
+    list_filter = ('category', 'is_active', 'is_flagship')
+    search_fields = ('template_id', 'name', 'description')
+    list_editable = ('is_active', 'sort_order', 'is_flagship')
+
+    def usage_count(self, obj):
+        count = obj.chatbots.count()
+        if count > 0:
+            return format_html('<strong>{}</strong>', count)
+        return '0'
+    usage_count.short_description = 'Bots Using'
+
+
+@admin.register(ChatbotEmailReport)
+class ChatbotEmailReportAdmin(admin.ModelAdmin):
+    list_display = ('chatbot', 'recipient_email', 'frequency', 'status', 'last_sent_at', 'expiry_notice_sent')
+    list_filter = ('frequency', 'status')
+    search_fields = ('chatbot__chatbot_id', 'chatbot__name', 'recipient_email')
+
+
+@admin.register(GoalPlan)
+class GoalPlanAdmin(admin.ModelAdmin):
+    list_display = ('chatbot', 'recipient_email', 'current_day', 'total_days', 'status', 'started_at', 'created_at')
+    list_filter = ('status',)
+    search_fields = ('chatbot__chatbot_id', 'chatbot__name', 'recipient_email')
+    readonly_fields = ('created_at', 'updated_at')
+
+
+@admin.register(WebSearchUsage)
+class WebSearchUsageAdmin(admin.ModelAdmin):
+    list_display = ('chatbot', 'query_count', 'created_at')
+    list_filter = ('created_at',)
+    search_fields = ('chatbot__chatbot_id', 'chatbot__name')
+    readonly_fields = ('created_at',)
+
+
+@admin.register(QSAddon)
+class QSAddonAdmin(admin.ModelAdmin):
+    list_display = ('addon_id', 'name', 'addon_type', 'amount', 'amount_usd', 'billing_type', 'quantity', 'is_per_chatbot', 'status', 'sort_order')
+    list_filter = ('addon_type', 'billing_type', 'status')
+    list_editable = ('status', 'sort_order')
+    search_fields = ('addon_id', 'name')
+
+
+@admin.register(QSAddonPurchase)
+class QSAddonPurchaseAdmin(admin.ModelAdmin):
+    list_display = ('purchase_id', 'user', 'addon', 'chatbot', 'quantity_remaining', 'start_date', 'expire_date', 'status', 'created_at')
+    list_filter = ('status', 'addon__addon_type', 'start_date', 'expire_date')
+    search_fields = ('purchase_id', 'user__user_id', 'addon__name', 'chatbot__chatbot_id')
     readonly_fields = ('created_at',)

@@ -540,7 +540,7 @@
                     </div>
                     <div class="mv-chatbot-trust" style="display:flex;align-items:center;justify-content:center;gap:5px;padding:5px 12px;margin:0;font-size:9.5px;color:#2d7a4f;background:#f0fdf4;border-top:1px solid #d1fae5;line-height:1.3;">
                         <svg width="11" height="11" viewBox="0 0 24 24" fill="#2dce89" style="flex-shrink:0;"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/></svg>
-                        <span>Private &amp; secure — your data is encrypted and never used for AI training</span>
+                        <span>Private &amp; secure - your data is encrypted and never used for AI training</span>
                     </div>
                     {% if not hide_branding %}
                     <div class="devlop-credit">Powered by <a href="https://querysafe.ai" target="_blank" rel="noopener" style="color:#7125BE;text-decoration:none;font-weight:600;">QuerySafe</a></div>

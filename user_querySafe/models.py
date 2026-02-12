@@ -99,6 +99,8 @@ class Chatbot(models.Model):
     sample_questions = models.TextField(blank=True, default='', help_text='Newline-separated starter questions shown in chat widget')
     collect_email = models.BooleanField(default=False, help_text='Require visitor email before chatting')
     collect_email_message = models.TextField(blank=True, default='Please enter your email to get started.', help_text='Message shown when asking for email')
+    enable_web_search = models.BooleanField(default=False, help_text='Enable Google Search grounding for live web data in chat responses')
+    template = models.ForeignKey('ChatbotTemplate', null=True, blank=True, on_delete=models.SET_NULL, related_name='chatbots', help_text='Template used to create this chatbot')
     last_trained_at = models.DateTimeField(null=True, blank=True, help_text='Last successful training timestamp')
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -335,7 +337,9 @@ class QSPlan(models.Model):
 class QSCheckout(models.Model):
     checkout_id = models.CharField(max_length=10, primary_key=True, unique=True)
     user = models.ForeignKey(User, to_field='user_id', on_delete=models.CASCADE, related_name='qs_checkouts')
-    plan = models.ForeignKey(QSPlan, to_field='plan_id', on_delete=models.CASCADE, related_name='qs_checkouts')
+    plan = models.ForeignKey(QSPlan, to_field='plan_id', on_delete=models.CASCADE, related_name='qs_checkouts', null=True, blank=True)
+    addon = models.ForeignKey('QSAddon', to_field='addon_id', on_delete=models.CASCADE, null=True, blank=True, related_name='qs_checkouts')
+    addon_chatbot = models.ForeignKey('Chatbot', on_delete=models.SET_NULL, null=True, blank=True, related_name='addon_checkouts', help_text='Chatbot this add-on purchase targets')
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -374,7 +378,8 @@ class QSOrder(models.Model):
     order_id = models.CharField(max_length=100, primary_key=True, unique=True)
     checkout = models.ForeignKey(QSCheckout, on_delete=models.CASCADE, related_name='orders')
     user = models.ForeignKey(User, to_field='user_id', on_delete=models.CASCADE, related_name='qs_orders')
-    plan = models.ForeignKey(QSPlan, to_field='plan_id', on_delete=models.CASCADE, related_name='qs_orders')
+    plan = models.ForeignKey(QSPlan, to_field='plan_id', on_delete=models.CASCADE, related_name='qs_orders', null=True, blank=True)
+    addon = models.ForeignKey('QSAddon', to_field='addon_id', on_delete=models.CASCADE, null=True, blank=True, related_name='qs_orders')
     amount = models.DecimalField(max_digits=12, decimal_places=2)
     status = models.CharField(max_length=20, choices=ORDER_STATUS_CHOICES, default='pending')
     razorpay_payment_id = models.CharField(max_length=100, blank=True, null=True)
@@ -508,3 +513,175 @@ class ScheduledEmail(models.Model):
 
     def __str__(self):
         return f"{self.user.email} - {self.email_type} ({self.status})"
+
+
+class ChatbotTemplate(models.Model):
+    """Pre-configured chatbot templates with bot_instructions, sample_questions, etc."""
+    CATEGORY_CHOICES = (
+        ('productivity', 'Productivity'),
+        ('business', 'Business'),
+        ('legal', 'Legal & Compliance'),
+        ('finance', 'Finance'),
+        ('hr', 'Human Resources'),
+        ('support', 'Customer Support'),
+        ('operations', 'Operations'),
+    )
+
+    template_id = models.CharField(max_length=10, primary_key=True)
+    name = models.CharField(max_length=100)
+    description = models.TextField(help_text='Short description shown on the template card')
+    category = models.CharField(max_length=30, choices=CATEGORY_CHOICES)
+    icon = models.CharField(max_length=50, default='smart_toy', help_text='Material Symbols icon name')
+    bot_instructions = models.TextField(help_text='Pre-written system instructions for this template type')
+    sample_questions = models.TextField(blank=True, default='', help_text='Newline-separated starter questions')
+    suggested_doc_types = models.TextField(blank=True, default='', help_text='Suggested document types to upload')
+    is_active = models.BooleanField(default=True)
+    is_flagship = models.BooleanField(default=False, help_text='Flagship templates get special UI treatment')
+    sort_order = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'chatbot_templates'
+        ordering = ['sort_order', 'name']
+
+    def __str__(self):
+        return f"{self.template_id} - {self.name}"
+
+
+class ChatbotEmailReport(models.Model):
+    """Tracks email report subscriptions per chatbot."""
+    FREQUENCY_CHOICES = (
+        ('daily', 'Daily'),
+        ('weekly', 'Weekly'),
+    )
+    STATUS_CHOICES = (
+        ('active', 'Active'),
+        ('paused', 'Paused'),
+        ('expired', 'Expired'),
+    )
+
+    chatbot = models.OneToOneField('Chatbot', on_delete=models.CASCADE, related_name='email_report')
+    recipient_email = models.EmailField(help_text='Email address to receive reports')
+    frequency = models.CharField(max_length=10, choices=FREQUENCY_CHOICES, default='weekly')
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='active')
+    last_sent_at = models.DateTimeField(null=True, blank=True)
+    last_report_data = models.JSONField(null=True, blank=True, help_text='Cached last report data')
+    expiry_notice_sent = models.BooleanField(default=False, help_text='Whether the plan-expired email has been sent')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'chatbot_email_reports'
+
+    def __str__(self):
+        return f"{self.chatbot.chatbot_id} - {self.frequency} ({self.status})"
+
+
+class GoalPlan(models.Model):
+    """Stores a generated 30-day plan from the Goal Planner template."""
+    STATUS_CHOICES = (
+        ('generating', 'Generating'),
+        ('active', 'Active'),
+        ('completed', 'Completed'),
+        ('expired', 'Expired'),
+    )
+
+    chatbot = models.OneToOneField('Chatbot', on_delete=models.CASCADE, related_name='goal_plan')
+    recipient_email = models.EmailField(help_text='Email to receive daily goal emails')
+    plan_data = models.JSONField(help_text='Full 30-day plan as JSON')
+    total_days = models.PositiveIntegerField(default=30)
+    current_day = models.PositiveIntegerField(default=0, help_text='Last day email sent')
+    preferred_time = models.TimeField(default='09:00', help_text='Preferred email time (IST)')
+    enable_emails = models.BooleanField(default=True, help_text='Whether to send daily goal emails')
+    status = models.CharField(max_length=12, choices=STATUS_CHOICES, default='generating')
+    started_at = models.DateField(null=True, blank=True, help_text='Date when day-1 email was sent')
+    expiry_notice_sent = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'goal_plans'
+
+    def __str__(self):
+        return f"{self.chatbot.chatbot_id} - Day {self.current_day}/{self.total_days} ({self.status})"
+
+
+class WebSearchUsage(models.Model):
+    """Tracks Google Search grounding API calls per chatbot for cost monitoring."""
+    chatbot = models.ForeignKey('Chatbot', on_delete=models.CASCADE, related_name='web_search_usage')
+    query_count = models.PositiveIntegerField(default=1, help_text='Number of search queries generated by Gemini')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'web_search_usage'
+
+    def __str__(self):
+        return f"{self.chatbot.chatbot_id} - {self.query_count} searches"
+
+
+class QSAddon(models.Model):
+    """Defines available add-on products that users can purchase beyond their base plan."""
+    ADDON_TYPE_CHOICES = (
+        ('web_search', 'Web Search Grounding'),
+        ('extra_documents', 'Extra Documents'),
+        ('extra_retrains', 'Extra Retrains'),
+        ('extra_messages', 'Extra Messages'),
+        ('extra_chatbot_slots', 'Extra Chatbot Slots'),
+    )
+    BILLING_TYPE_CHOICES = (
+        ('monthly', 'Monthly Recurring'),
+        ('one_time', 'One-Time Purchase'),
+    )
+    STATUS_CHOICES = (
+        ('active', 'Active'),
+        ('inactive', 'Inactive'),
+    )
+
+    addon_id = models.CharField(max_length=10, primary_key=True)
+    addon_type = models.CharField(max_length=30, choices=ADDON_TYPE_CHOICES)
+    name = models.CharField(max_length=100)
+    description = models.TextField(blank=True)
+    amount = models.DecimalField(max_digits=12, decimal_places=2, default=0.00, help_text='Price in INR')
+    amount_usd = models.DecimalField(max_digits=12, decimal_places=2, default=0.00, help_text='Price in USD')
+    currency = models.CharField(max_length=10, default='INR')
+    billing_type = models.CharField(max_length=10, choices=BILLING_TYPE_CHOICES, default='one_time')
+    quantity = models.PositiveIntegerField(default=1, help_text='What the user gets: e.g., 5 extra documents, 500 extra messages')
+    days = models.PositiveIntegerField(default=30, help_text='Validity period in days')
+    is_per_chatbot = models.BooleanField(default=False, help_text='If True, add-on applies to a specific chatbot. If False, it applies account-wide.')
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='active')
+    sort_order = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'qs_addons'
+        ordering = ['sort_order', 'name']
+
+    def __str__(self):
+        return f"{self.addon_id} - {self.name}"
+
+
+class QSAddonPurchase(models.Model):
+    """Tracks individual add-on purchases by users (analogous to QSPlanAllot for plans)."""
+    STATUS_CHOICES = (
+        ('active', 'Active'),
+        ('expired', 'Expired'),
+        ('consumed', 'Consumed'),
+    )
+
+    purchase_id = models.CharField(max_length=10, primary_key=True, unique=True)
+    user = models.ForeignKey('User', to_field='user_id', on_delete=models.CASCADE, related_name='addon_purchases')
+    addon = models.ForeignKey(QSAddon, to_field='addon_id', on_delete=models.CASCADE, related_name='purchases')
+    chatbot = models.ForeignKey('Chatbot', on_delete=models.SET_NULL, null=True, blank=True, help_text='The chatbot this add-on applies to (if per-chatbot). NULL for account-wide add-ons.')
+    order = models.ForeignKey(QSOrder, to_field='order_id', on_delete=models.CASCADE, null=True, blank=True, related_name='addon_purchases', help_text='Order that activated this add-on')
+    quantity_remaining = models.PositiveIntegerField(default=0, help_text='Remaining units for consumable add-ons')
+    start_date = models.DateField()
+    expire_date = models.DateField()
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='active')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'qs_addon_purchases'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.purchase_id} - {self.user.user_id} - {self.addon.name}"

@@ -3,7 +3,7 @@ from django.conf import settings
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from user_querySafe.decorators import login_required
-from user_querySafe.models import Activity, Chatbot, ChatbotDocument, Message, User, QSPlan, QSOrder, QSCheckout, QSBillingDetails, QSPlanAllot
+from user_querySafe.models import Activity, Chatbot, ChatbotDocument, Message, User, QSPlan, QSOrder, QSCheckout, QSBillingDetails, QSPlanAllot, QSAddon, QSAddonPurchase
 import random, string
 from django.utils import timezone
 from types import SimpleNamespace
@@ -156,6 +156,136 @@ def subscription_view(request):
     return render(request, 'user_querySafe/subscriptions.html', context)
 
 
+@login_required
+def addons_view(request):
+    """Lists available add-ons and the user's active add-on purchases."""
+    user = User.objects.get(user_id=request.session['user_id'])
+
+    # Check active plan
+    active_allot = QSPlanAllot.objects.filter(
+        user=user,
+        expire_date__gte=timezone.now().date(),
+    ).order_by('-created_at').first()
+
+    if not active_allot:
+        messages.warning(request, "You need an active plan before purchasing add-ons.")
+        return redirect('subscriptions')
+
+    addons = QSAddon.objects.filter(status='active').order_by('sort_order')
+
+    # User's chatbots (needed for per-chatbot addon dropdowns)
+    chatbots = Chatbot.objects.filter(user=user)
+
+    # Active add-on purchases
+    active_purchases = QSAddonPurchase.objects.filter(
+        user=user,
+        expire_date__gte=timezone.now().date(),
+        status='active',
+    ).select_related('addon', 'chatbot').order_by('-created_at')
+
+    context = {
+        'addons': addons,
+        'chatbots': chatbots,
+        'active_purchases': active_purchases,
+        'active_allot': active_allot,
+    }
+    return render(request, 'user_querySafe/addons.html', context)
+
+
+@login_required
+def addon_checkout(request):
+    """POST handler: creates a QSCheckout for an add-on purchase and redirects to checkout page."""
+    if request.method != 'POST':
+        messages.warning(request, 'Invalid access.')
+        return redirect('addons')
+
+    user = User.objects.get(user_id=request.session['user_id'])
+
+    addon_id = request.POST.get('addon_id')
+    chatbot_id = request.POST.get('chatbot_id')  # may be empty for account-wide addons
+
+    addon = QSAddon.objects.filter(addon_id=addon_id, status='active').first()
+    if not addon:
+        messages.error(request, 'Selected add-on not found.')
+        return redirect('addons')
+
+    # Validate chatbot selection for per-chatbot addons
+    chatbot_obj = None
+    if addon.is_per_chatbot:
+        if not chatbot_id:
+            messages.error(request, 'Please select a chatbot for this add-on.')
+            return redirect('addons')
+        chatbot_obj = Chatbot.objects.filter(chatbot_id=chatbot_id, user=user).first()
+        if not chatbot_obj:
+            messages.error(request, 'Selected chatbot not found.')
+            return redirect('addons')
+
+    # Generate unique checkout_id
+    def gen_id(length=10):
+        return ''.join(random.choices(string.ascii_uppercase + string.digits, k=length))
+
+    checkout_id = gen_id()
+    while QSCheckout.objects.filter(checkout_id=checkout_id).exists():
+        checkout_id = gen_id()
+
+    # Create QSCheckout with addon (no plan)
+    checkout_obj = QSCheckout.objects.create(
+        checkout_id=checkout_id,
+        user=user,
+        addon=addon,
+        addon_chatbot=chatbot_obj,
+    )
+
+    # Build addon context for checkout page
+    addon_context = {
+        'plan_id': addon.addon_id,
+        'plan_name': addon.name,
+        'amount': addon.amount,
+        'currency': addon.currency,
+        'days': addon.days,
+        'is_trial': False,
+        'parent_plan': None,
+        'no_of_bot': 0,
+        'no_of_query': 0,
+        'no_of_file': 0,
+        'max_file_size': 0,
+    }
+
+    # Prefill billing details
+    latest_billing = QSBillingDetails.objects.filter(checkout__user=user).order_by('-created_at').first()
+    if latest_billing:
+        billing_defaults = {
+            'full_name': latest_billing.full_name or user.name,
+            'email': latest_billing.email or user.email,
+            'phone': latest_billing.phone or '',
+            'address': latest_billing.address or '',
+            'city': latest_billing.city or '',
+            'state': latest_billing.state or '',
+            'pin': latest_billing.pin or '',
+        }
+    else:
+        billing_defaults = {
+            'full_name': user.name,
+            'email': user.email,
+            'phone': '',
+            'address': '',
+            'city': '',
+            'state': '',
+            'pin': '',
+        }
+
+    context = {
+        'plan': addon_context,
+        'billing_defaults': billing_defaults,
+        'checkout_id': checkout_obj.checkout_id,
+        'key_id': getattr(settings, 'RAZORPAY_KEY_ID', ''),
+        'is_addon': True,
+        'addon_obj': addon,
+        'addon_chatbot': chatbot_obj,
+    }
+
+    return render(request, 'user_querySafe/checkout.html', context)
+
 
 @login_required
 def checkout(request):
@@ -247,18 +377,25 @@ def order_payment(request):
     checkout_id = request.GET.get('checkout_id') or request.POST.get('checkout_id')
     checkout = None
     if checkout_id:
-        checkout = QSCheckout.objects.filter(checkout_id=checkout_id, user=user).select_related('plan').first()
+        checkout = QSCheckout.objects.filter(checkout_id=checkout_id, user=user).select_related('plan', 'addon').first()
 
     if not checkout:
         messages.warning(request, 'Invalid or missing checkout reference.')
         return redirect('subscriptions')
 
+    # Determine if this is an addon checkout or plan checkout
+    is_addon_checkout = checkout.addon is not None
     plan = checkout.plan
+    addon = checkout.addon
 
     # If billing form submitted, save billing details and create Razorpay order + QSOrder
     razorpay_order_id = None
-    amount_paise = int(getattr(plan, 'amount', 0) * 100)
-    currency = getattr(plan, 'currency', 'INR')
+    if is_addon_checkout:
+        amount_paise = int(addon.amount * 100)
+        currency = addon.currency
+    else:
+        amount_paise = int(getattr(plan, 'amount', 0) * 100)
+        currency = getattr(plan, 'currency', 'INR')
 
     if request.method == 'POST':
         # Read billing details from form
@@ -373,14 +510,24 @@ def order_payment(request):
             # Otherwise, create Razorpay order now
             razorpay_client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
             # Build notes payload to help identify the order in Razorpay dashboard/webhooks
-            notes = {
-                'checkout_id': checkout.checkout_id,
-                'plan_id': getattr(plan, 'plan_id', ''),
-                'plan_name': getattr(plan, 'plan_name', ''),
-                'customer_name': full_name,
-                'customer_email': email,
-                'customer_phone': phone,
-            }
+            if is_addon_checkout:
+                notes = {
+                    'checkout_id': checkout.checkout_id,
+                    'addon_id': addon.addon_id,
+                    'addon_name': addon.name,
+                    'customer_name': full_name,
+                    'customer_email': email,
+                    'customer_phone': phone,
+                }
+            else:
+                notes = {
+                    'checkout_id': checkout.checkout_id,
+                    'plan_id': getattr(plan, 'plan_id', ''),
+                    'plan_name': getattr(plan, 'plan_name', ''),
+                    'customer_name': full_name,
+                    'customer_email': email,
+                    'customer_phone': phone,
+                }
             order_data = {
                 "amount": amount_paise,
                 "currency": currency,
@@ -392,12 +539,14 @@ def order_payment(request):
             razorpay_order_id = razorpay_order.get('id')
 
             # Save QSOrder
+            order_amount = addon.amount if is_addon_checkout else plan.amount
             QSOrder.objects.create(
                 order_id=razorpay_order_id,
                 checkout=checkout,
                 user=user,
-                plan=plan,
-                amount=plan.amount,
+                plan=plan if not is_addon_checkout else None,
+                addon=addon if is_addon_checkout else None,
+                amount=order_amount,
                 status='pending'
             )
         except Exception as e:
@@ -450,23 +599,36 @@ def order_payment(request):
                 'pin': '',
             }
 
-    context = {
-        'user': user,
-        'checkout': checkout,
-        'plan': {
+    if is_addon_checkout:
+        plan_display = {
+            'plan_id': addon.addon_id,
+            'plan_name': addon.name,
+            'amount': addon.amount,
+            'currency': currency,
+            'days': addon.days,
+            'is_trial': False,
+        }
+    else:
+        plan_display = {
             'plan_id': getattr(plan, 'plan_id', ''),
             'plan_name': getattr(plan, 'plan_name', ''),
             'amount': getattr(plan, 'amount', 0),
             'currency': currency,
             'days': getattr(plan, 'days', 0),
             'is_trial': getattr(plan, 'is_trial', False),
-        },
+        }
+
+    context = {
+        'user': user,
+        'checkout': checkout,
+        'plan': plan_display,
         'billing_defaults': billing_defaults_page,
         'key_id': getattr(settings, 'RAZORPAY_KEY_ID', ''),
         'razorpay_order_id': razorpay_order_id,
         'amount_paise': amount_paise,
         'currency': currency,
         'project_name': getattr(settings, 'PROJECT_NAME', 'QuerySafe'),
+        'is_addon': is_addon_checkout,
     }
 
     return render(request, 'user_querySafe/payment_page.html', context)
@@ -616,48 +778,105 @@ def payment_status(request):
                 'status': qs_order.status,
                 'payment_id': qs_order.razorpay_payment_id,
             }
-            # If payment completed, create a QSPlanAllot for the user if not already created
+            # If payment completed, create allotment (plan or addon purchase)
             try:
                 if qs_order.status == 'completed':
-                    # avoid duplicates
-                    if not QSPlanAllot.objects.filter(order=qs_order).exists():
-                        def gen_plan_allot_id(length=8):
-                            return ''.join(random.choices(string.ascii_uppercase + string.digits, k=length))
+                    # Check if this is an addon order
+                    is_addon_order = qs_order.addon is not None
 
-                        plan_allot_id = gen_plan_allot_id()
-                        while QSPlanAllot.objects.filter(plan_allot_id=plan_allot_id).exists():
-                            plan_allot_id = gen_plan_allot_id()
+                    if is_addon_order:
+                        # Create QSAddonPurchase if not already created
+                        if not QSAddonPurchase.objects.filter(order=qs_order).exists():
+                            def gen_purchase_id(length=8):
+                                return ''.join(random.choices(string.ascii_uppercase + string.digits, k=length))
 
-                        plan = qs_order.plan
-                        start_date = timezone.now().date()
-                        expire_date = start_date + timedelta(days=getattr(plan, 'days', 0))
+                            purchase_id = gen_purchase_id()
+                            while QSAddonPurchase.objects.filter(purchase_id=purchase_id).exists():
+                                purchase_id = gen_purchase_id()
 
-                        QSPlanAllot.objects.create(
-                            plan_allot_id=plan_allot_id,
-                            user=qs_order.user,
-                            parent_plan=plan,
-                            order=qs_order,
-                            plan_name=plan.plan_name,
-                            no_of_bot=getattr(plan, 'no_of_bot', 0),
-                            no_of_query=getattr(plan, 'no_of_query', 0),
-                            no_of_files=getattr(plan, 'no_of_file', 0),
-                            file_size=getattr(plan, 'max_file_size', 0),
-                            start_date=start_date,
-                            expire_date=expire_date
-                        )
-                        result['plan_allot_created'] = True
+                            addon_obj = qs_order.addon
+                            start_date = timezone.now().date()
+                            expire_date = start_date + timedelta(days=addon_obj.days)
 
-                        # Send plan activation email
-                        try:
-                            dashboard_url = request.build_absolute_uri(reverse('dashboard'))
-                            send_plan_activation_email(
-                                qs_order.user.email, qs_order.user.name, plan,
-                                start_date, expire_date, dashboard_url
+                            # Get target chatbot from the checkout record
+                            target_chatbot = None
+                            try:
+                                target_chatbot = qs_order.checkout.addon_chatbot
+                            except Exception:
+                                pass
+
+                            QSAddonPurchase.objects.create(
+                                purchase_id=purchase_id,
+                                user=qs_order.user,
+                                addon=addon_obj,
+                                chatbot=target_chatbot,
+                                order=qs_order,
+                                quantity_remaining=addon_obj.quantity,
+                                start_date=start_date,
+                                expire_date=expire_date,
+                                status='active',
                             )
-                        except Exception as email_err:
-                            print(f"Plan activation email error (paid): {email_err}")
+                            result['addon_purchase_created'] = True
+
+                            # If addon is web_search, auto-enable on the target chatbot
+                            if addon_obj.addon_type == 'web_search' and target_chatbot:
+                                try:
+                                    target_chatbot.enable_web_search = True
+                                    target_chatbot.save(update_fields=['enable_web_search'])
+                                except Exception as ws_err:
+                                    print(f"Error enabling web search on chatbot: {ws_err}")
+
+                            # Log activity
+                            try:
+                                Activity.objects.create(
+                                    user=qs_order.user,
+                                    title=f"Purchased add-on: {addon_obj.name}",
+                                    description=f"Add-on {addon_obj.name} activated until {expire_date.strftime('%B %d, %Y')}"
+                                    + (f" for chatbot {target_chatbot.chatbot_name}" if target_chatbot else ""),
+                                )
+                            except Exception:
+                                pass
+
+                    else:
+                        # Plan order: create QSPlanAllot as before
+                        if not QSPlanAllot.objects.filter(order=qs_order).exists():
+                            def gen_plan_allot_id(length=8):
+                                return ''.join(random.choices(string.ascii_uppercase + string.digits, k=length))
+
+                            plan_allot_id = gen_plan_allot_id()
+                            while QSPlanAllot.objects.filter(plan_allot_id=plan_allot_id).exists():
+                                plan_allot_id = gen_plan_allot_id()
+
+                            plan = qs_order.plan
+                            start_date = timezone.now().date()
+                            expire_date = start_date + timedelta(days=getattr(plan, 'days', 0))
+
+                            QSPlanAllot.objects.create(
+                                plan_allot_id=plan_allot_id,
+                                user=qs_order.user,
+                                parent_plan=plan,
+                                order=qs_order,
+                                plan_name=plan.plan_name,
+                                no_of_bot=getattr(plan, 'no_of_bot', 0),
+                                no_of_query=getattr(plan, 'no_of_query', 0),
+                                no_of_files=getattr(plan, 'no_of_file', 0),
+                                file_size=getattr(plan, 'max_file_size', 0),
+                                start_date=start_date,
+                                expire_date=expire_date
+                            )
+                            result['plan_allot_created'] = True
+
+                            # Send plan activation email
+                            try:
+                                dashboard_url = request.build_absolute_uri(reverse('dashboard'))
+                                send_plan_activation_email(
+                                    qs_order.user.email, qs_order.user.name, plan,
+                                    start_date, expire_date, dashboard_url
+                                )
+                            except Exception as email_err:
+                                print(f"Plan activation email error (paid): {email_err}")
             except Exception as e:
-                result['message'] = result.get('message', '') + f' (Plan allot error: {e})'
+                result['message'] = result.get('message', '') + f' (Allotment error: {e})'
 
             # If plan allotment was created, update session so user sees new plan immediately
             try:
@@ -738,6 +957,7 @@ def payment_status(request):
         billing = None
 
     plan_obj = qs_order.plan
+    addon_obj = qs_order.addon
     customer = qs_order.user
     payment_info = {
         'payment_id': qs_order.razorpay_payment_id,
@@ -754,6 +974,8 @@ def payment_status(request):
         'result': result,
         'order_obj': qs_order,
         'plan_obj': plan_obj,
+        'addon_obj': addon_obj,
+        'is_addon_order': addon_obj is not None,
         'billing': billing,
         'customer': customer,
         'payment_info': payment_info,
@@ -764,33 +986,43 @@ def payment_status(request):
 def order_history(request):
     user = User.objects.get(user_id=request.session['user_id'])
 
-    # Get Type 2 orders (QSPlan / QSOrder)
-    type2_orders = QSOrder.objects.filter(user=user).select_related('plan').order_by('-created_at')
-    
+    # Get orders (both plan and addon)
+    type2_orders = QSOrder.objects.filter(user=user).select_related('plan', 'addon').order_by('-created_at')
+
     # Build combined order list
     all_orders = []
-    
 
-    # Process Type 2 orders (QS orders)
+    # Process all orders (plan + addon)
     for o in type2_orders:
         expiry = None
+        is_addon = o.addon is not None
         try:
-            # Get linked plan allotment if available
-            plan_allot = o.plan_allots.first()
-            if plan_allot:
-                expiry = plan_allot.expire_date
+            if is_addon:
+                addon_purchase = o.addon_purchases.first()
+                if addon_purchase:
+                    expiry = addon_purchase.expire_date
+            else:
+                plan_allot = o.plan_allots.first()
+                if plan_allot:
+                    expiry = plan_allot.expire_date
         except Exception:
             pass
-        
+
+        if is_addon:
+            item_name = f"Add-on: {o.addon.name}" if o.addon else 'Add-on'
+        else:
+            item_name = o.plan.plan_name if o.plan else 'N/A'
+
         all_orders.append({
             'order_id': o.order_id,
             'amount': o.amount,
             'status': o.status,
-            'plan_name': o.plan.plan_name if o.plan else 'N/A',
+            'plan_name': item_name,
             'created_at': o.created_at,
             'expiry': expiry,
             'error_code': o.razorpay_error_code,
             'error_desc': o.razorpay_error_description,
+            'is_addon': is_addon,
         })
     
     # Sort combined list by created_at (newest first)

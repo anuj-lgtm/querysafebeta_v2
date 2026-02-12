@@ -527,62 +527,71 @@ document.addEventListener('DOMContentLoaded', function() {
     }, 8000);
   }
 
-  // Status polling
+  // Status polling - polls while any chatbot has 'training' status
   var pollingInterval = setInterval(function() {
     fetch("{% url 'chatbot_status' %}")
       .then(response => response.json())
       .then(data => {
-        let now = Date.now() / 1000;
-        let allExpired = true;
+        var anyTraining = false;
         data.forEach(function(bot) {
           var row = document.getElementById("chatbot-row-" + bot.chatbot_id);
-          if(row) {
-            var createdAt = parseFloat(row.getAttribute("data-created-at"));
-            if((now - createdAt) < 120) {
-              allExpired = false;
-              var elem = document.getElementById("status-" + bot.chatbot_id);
-              if (elem) {
-                if (bot.status === 'trained') {
-                  // Reload the page when status is "trained"
-                  location.reload();
-                } else {
-                  // Update the status badge as before
-                  elem.innerHTML = bot.status.charAt(0).toUpperCase() + bot.status.slice(1);
-                  var badgeClass;
-                  switch(bot.status) {
-                    case 'trained': badgeClass = 'success'; break;
-                    case 'training': badgeClass = 'warning'; break;
-                    default: badgeClass = 'secondary';
-                  }
-                  elem.className = `badge badge-sm bg-gradient-${badgeClass} ${bot.status === 'training' ? 'status-badge-training' : ''}`;
-                  
-                  // Update button states
-                  const widgetButton = document.getElementById(`widget-code-${bot.chatbot_id}`);
-                  const actionButtons = row.querySelectorAll('.btn-group .btn');
-                  
-                  if (bot.status === 'trained') {
-                    widgetButton.classList.remove('disabled', 'opacity-50');
-                    widgetButton.removeAttribute('disabled');
-                    actionButtons.forEach(btn => {
-                      btn.classList.remove('disabled', 'opacity-50');
-                      btn.removeAttribute('disabled');
-                    });
-                  } else {
-                    widgetButton.classList.add('disabled', 'opacity-50');
-                    widgetButton.setAttribute('disabled', '');
-                    actionButtons.forEach(btn => {
-                      btn.classList.add('disabled', 'opacity-50');
-                      btn.setAttribute('disabled', '');
-                    });
-                  }
-                }
+          if (!row) return;
+
+          var elem = document.getElementById("status-" + bot.chatbot_id);
+          var currentStatus = elem ? elem.textContent.trim().toLowerCase() : '';
+
+          // Track if any bot is still training
+          if (bot.status === 'training') {
+            anyTraining = true;
+          }
+
+          // Only update if status has changed
+          if (elem && currentStatus !== bot.status) {
+            if (bot.status === 'trained' && currentStatus === 'training') {
+              // Training just completed - reload to update UI fully
+              location.reload();
+              return;
+            }
+
+            // Update the status badge
+            elem.innerHTML = bot.status.charAt(0).toUpperCase() + bot.status.slice(1);
+            var badgeClass;
+            switch(bot.status) {
+              case 'trained': badgeClass = 'success'; break;
+              case 'training': badgeClass = 'warning'; break;
+              default: badgeClass = 'secondary';
+            }
+            elem.className = 'badge badge-sm bg-gradient-' + badgeClass + (bot.status === 'training' ? ' status-badge-training' : '');
+
+            // Update button states
+            var widgetButton = document.getElementById('widget-code-' + bot.chatbot_id);
+            var actionButtons = row.querySelectorAll('.btn-group .btn');
+
+            if (bot.status === 'trained') {
+              if (widgetButton) {
+                widgetButton.classList.remove('disabled', 'opacity-50');
+                widgetButton.removeAttribute('disabled');
               }
+              actionButtons.forEach(function(btn) {
+                btn.classList.remove('disabled', 'opacity-50');
+                btn.removeAttribute('disabled');
+              });
+            } else {
+              if (widgetButton) {
+                widgetButton.classList.add('disabled', 'opacity-50');
+                widgetButton.setAttribute('disabled', '');
+              }
+              actionButtons.forEach(function(btn) {
+                btn.classList.add('disabled', 'opacity-50');
+                btn.setAttribute('disabled', '');
+              });
             }
           }
         });
-        if (allExpired) {
+
+        // Stop polling when no bots are training
+        if (!anyTraining) {
           clearInterval(pollingInterval);
-          console.log("Polling stopped; all chatbots are older than 2 minutes.");
         }
       })
       .catch(error => console.error("Error updating chatbot status:", error));
@@ -785,7 +794,7 @@ document.addEventListener('DOMContentLoaded', function() {
             target: '#widget-code-' + chatbotId,
             icon: 'code',
             title: 'Embed on Your Website',
-            text: "Happy with your bot? Click 'Widget Code' to get the embed snippet. Paste it into your website\u2019s HTML and you\u2019re live!",
+            text: "Happy with your bot? Click 'Widget Code' to get the embed snippet. Paste it into your website's HTML and you're live!",
             position: 'top'
           }
         ]

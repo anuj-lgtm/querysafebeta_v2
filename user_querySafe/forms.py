@@ -65,6 +65,8 @@ class LoginForm(forms.Form):
     )
 
 class ChatbotCreateForm(forms.ModelForm):
+    template_id = forms.CharField(required=False, widget=forms.HiddenInput(attrs={'id': 'id_template_id'}))
+
     name = forms.CharField(
         widget=forms.TextInput(attrs={
             'class': 'form-control border px-3',

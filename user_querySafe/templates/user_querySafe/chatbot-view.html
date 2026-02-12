@@ -385,8 +385,28 @@
             {% endif %}
         </div>
 
+        <!-- Email Gate (lead capture) -->
+        {% if collect_email %}
+        <div id="email-gate" style="padding:24px 20px;text-align:center;">
+            <div style="margin-bottom:12px;">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" style="margin-bottom:8px;">
+                    <rect x="2" y="4" width="20" height="16" rx="3" stroke="#7125BE" stroke-width="1.5" fill="none"/>
+                    <path d="M2 7l10 6 10-6" stroke="#7125BE" stroke-width="1.5" fill="none"/>
+                </svg>
+            </div>
+            <p style="margin:0 0 14px;font-size:0.95rem;color:#333;line-height:1.5;">{{ collect_email_message }}</p>
+            <input type="email" id="email-gate-input" placeholder="you@example.com"
+                style="width:100%;padding:11px 14px;border:1px solid #e5ddf0;border-radius:10px;font-size:0.95rem;outline:none;margin-bottom:12px;font-family:inherit;background:#faf8ff;">
+            <button id="email-gate-submit"
+                style="width:100%;padding:11px;background:#7125BE;color:#fff;border:none;border-radius:10px;font-size:0.95rem;cursor:pointer;font-weight:600;transition:background 0.2s;">
+                Start Chat
+            </button>
+            <p style="margin:10px 0 0;font-size:0.75rem;color:#999;">Your email is kept private and secure.</p>
+        </div>
+        {% endif %}
+
         <!-- Input -->
-        <div class="chat-input-bar">
+        <div class="chat-input-bar" {% if collect_email %}style="display:none;"{% endif %}>
             <textarea id="chat-input" placeholder="Type your message..." rows="1"></textarea>
             <button id="send-btn" onclick="sendMessage()" title="Send">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="#fff"><path d="M2 21l21-9-21-9v7l15 2-15 2z"/></svg>
@@ -396,7 +416,7 @@
         <!-- Trust -->
         <div class="chat-trust">
             <svg width="11" height="11" viewBox="0 0 24 24" fill="#2dce89" style="flex-shrink:0;"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/></svg>
-            <span>Private &amp; secure — your data is encrypted and never used for AI training</span>
+            <span>Private &amp; secure - your data is encrypted and never used for AI training</span>
         </div>
         {% if not hide_branding %}
         <div class="chat-credit">Powered by <a href="https://querysafe.ai" target="_blank" rel="noopener">QuerySafe</a></div>
@@ -445,6 +465,38 @@
     var userMessageCount = 0;
     var sessionStartTime = Date.now();
     var feedbackShown = false;
+    var visitorEmail = '';
+
+    // Email gate handling
+    var emailGate = document.getElementById('email-gate');
+    if (emailGate) {
+        var emailInput = document.getElementById('email-gate-input');
+        var emailSubmit = document.getElementById('email-gate-submit');
+
+        emailSubmit.addEventListener('click', function() {
+            var email = emailInput.value.trim();
+            if (!email || !email.includes('@')) {
+                emailInput.style.borderColor = '#e53e3e';
+                emailInput.setAttribute('placeholder', 'Please enter a valid email');
+                return;
+            }
+            visitorEmail = email;
+            emailGate.style.display = 'none';
+            document.querySelector('.chat-input-bar').style.display = 'flex';
+            document.getElementById('chat-input').focus();
+        });
+
+        emailInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                emailSubmit.click();
+            }
+        });
+
+        emailInput.addEventListener('input', function() {
+            this.style.borderColor = '#e5ddf0';
+        });
+    }
 
     // Auto-resize textarea
     var input = document.getElementById('chat-input');
@@ -528,7 +580,8 @@
             body: JSON.stringify({
                 query: query,
                 chatbot_id: '{{ chatbot_id }}',
-                conversation_id: conversationId
+                conversation_id: conversationId,
+                visitor_email: visitorEmail || ''
             })
         })
         .then(function(r) { return r.json(); })
