@@ -61,13 +61,20 @@ def create_chatbot(request):
         messages.error(request, "You do not have an active subscription to create chatbots.")
         return redirect('my_chatbots')
 
-    # Check if user reached chatbot limit
+    # Check if user reached chatbot limit (base plan + add-on stacking)
     current_chatbots = Chatbot.objects.filter(user=user).count()
-    if current_chatbots >= active_plan.no_of_bot:
+    try:
+        from user_querySafe.addon_utils import get_effective_limits
+        effective = get_effective_limits(user, active_plan)
+        effective_bot_limit = effective['no_of_bot']
+    except Exception:
+        effective_bot_limit = active_plan.no_of_bot
+
+    if current_chatbots >= effective_bot_limit:
         messages.warning(
             request,
-            f"You have reached your limit of {active_plan.no_of_bot} chatbots under the {active_plan.plan_name} plan. "
-            f"Please contact us via Help & Support to upgrade."
+            f"You have reached your limit of {effective_bot_limit} chatbots. "
+            f"Purchase an extra chatbot slot add-on or upgrade your plan."
         )
         return redirect('my_chatbots')
 
@@ -103,13 +110,18 @@ def create_chatbot(request):
                 doc_file = ContentFile(content.encode('utf-8'), name=f"{chatbot.name}-goals.txt")
                 ChatbotDocument.objects.create(chatbot=chatbot, document=doc_file)
 
-            # Process document uploads
+            # Process document uploads (base plan + add-on stacking)
             uploaded_docs = request.FILES.getlist('pdf_files')
-            allowed_docs = active_plan.no_of_files
+            try:
+                from user_querySafe.addon_utils import get_effective_limits
+                effective = get_effective_limits(user, active_plan, chatbot=chatbot)
+                allowed_docs = effective['no_of_files']
+            except Exception:
+                allowed_docs = active_plan.no_of_files
             allowed_size_bytes = active_plan.file_size * 1024 * 1024
 
             if len(uploaded_docs) > allowed_docs:
-                messages.error(request, f"You can upload a maximum of {allowed_docs} file(s) as per your subscription.")
+                messages.error(request, f"You can upload a maximum of {allowed_docs} file(s). Purchase extra documents add-on for more.")
                 return redirect('create_chatbot')
 
             ALLOWED_EXTENSIONS = {'.pdf', '.doc', '.docx', '.txt', '.xlsx', '.xls', '.jpg', '.jpeg', '.png', '.gif', '.bmp'}
@@ -402,9 +414,28 @@ def edit_chatbot(request, chatbot_id):
     if request.method == 'POST':
         form = ChatbotEditForm(request.POST, request.FILES, instance=chatbot)
         if form.is_valid():
-            form.save()
+            saved_chatbot = form.save(commit=False)
 
-            # Handle new file uploads
+            # Validate web search toggle: only allow if user has active addon
+            if saved_chatbot.enable_web_search:
+                try:
+                    from user_querySafe.models import QSAddonPurchase
+                    has_addon = QSAddonPurchase.objects.filter(
+                        user=user,
+                        addon__addon_type='web_search',
+                        chatbot=chatbot,
+                        expire_date__gte=timezone.now().date(),
+                        status='active',
+                        quantity_remaining__gt=0,
+                    ).exists()
+                    if not has_addon:
+                        saved_chatbot.enable_web_search = False
+                except Exception:
+                    saved_chatbot.enable_web_search = False
+            saved_chatbot.save()
+            form.save_m2m()
+
+            # Handle new file uploads (base plan + add-on stacking)
             uploaded_docs = request.FILES.getlist('pdf_files')
             current_doc_count = existing_docs.count()
             try:
@@ -412,7 +443,12 @@ def edit_chatbot(request, chatbot_id):
             except Exception:
                 url_count = 0
             total_sources = current_doc_count + url_count
-            allowed_docs = active_plan.no_of_files
+            try:
+                from user_querySafe.addon_utils import get_effective_limits
+                effective = get_effective_limits(user, active_plan, chatbot=chatbot)
+                allowed_docs = effective['no_of_files']
+            except Exception:
+                allowed_docs = active_plan.no_of_files
             allowed_size_bytes = active_plan.file_size * 1024 * 1024
             ALLOWED_EXTENSIONS = {'.pdf', '.doc', '.docx', '.txt', '.xlsx', '.xls', '.jpg', '.jpeg', '.png', '.gif', '.bmp'}
 
@@ -511,6 +547,21 @@ def edit_chatbot(request, chatbot_id):
     except GoalPlan.DoesNotExist:
         goal_plan = None
 
+    # Check if user has an active web search add-on for this chatbot
+    has_web_search_addon = False
+    try:
+        from user_querySafe.models import QSAddonPurchase
+        has_web_search_addon = QSAddonPurchase.objects.filter(
+            user=user,
+            addon__addon_type='web_search',
+            chatbot=chatbot,
+            expire_date__gte=timezone.now().date(),
+            status='active',
+            quantity_remaining__gt=0,
+        ).exists()
+    except Exception:
+        pass
+
     context = {
         'form': form,
         'chatbot': chatbot,
@@ -520,6 +571,7 @@ def edit_chatbot(request, chatbot_id):
         'email_report': email_report,
         'goal_plan': goal_plan,
         'user': user,
+        'has_web_search_addon': has_web_search_addon,
     }
     return render(request, 'user_querySafe/edit_chatbot.html', context)
 
@@ -564,6 +616,44 @@ def retrain_chatbot(request, chatbot_id):
     if remaining_docs == 0 and remaining_urls == 0:
         messages.error(request, "Cannot retrain: no documents or URLs remain. Please add sources first.")
         return redirect('edit_chatbot', chatbot_id=chatbot_id)
+
+    # Enforce retrain limit: base 4/month + add-on credits
+    try:
+        from user_querySafe.addon_utils import get_effective_limits, consume_addon_credit, BASE_RETRAINS_PER_MONTH
+
+        # Count retrains this month using Activity log
+        month_start = timezone.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        retrains_this_month = Activity.objects.filter(
+            user=user,
+            title__startswith='Retrained chatbot',
+            timestamp__gte=month_start,
+        ).count()
+
+        # Get active plan
+        retrain_plan = QSPlanAllot.objects.filter(
+            user=user,
+            expire_date__gte=timezone.now().date()
+        ).order_by('-created_at').first()
+
+        if retrain_plan:
+            effective = get_effective_limits(user, retrain_plan)
+            effective_retrain_limit = effective['retrains']
+        else:
+            effective_retrain_limit = BASE_RETRAINS_PER_MONTH
+
+        if retrains_this_month >= effective_retrain_limit:
+            messages.error(
+                request,
+                f"You have used all {effective_retrain_limit} retrains this month. "
+                f"Purchase extra retrains from the Add-ons page to continue."
+            )
+            return redirect('edit_chatbot', chatbot_id=chatbot_id)
+
+        # If over base limit, consume an add-on credit
+        if retrains_this_month >= BASE_RETRAINS_PER_MONTH:
+            consume_addon_credit(user, 'extra_retrains')
+    except Exception as retrain_err:
+        print(f"Retrain limit check error (non-blocking): {retrain_err}")
 
     chatbot.status = 'training'
     chatbot.save()

@@ -198,9 +198,18 @@ class ChatbotEditForm(forms.ModelForm):
         label="Email Prompt Message"
     )
 
+    enable_web_search = forms.BooleanField(
+        required=False,
+        label="Enable Web Search",
+        widget=forms.CheckboxInput(attrs={
+            'class': 'form-check-input',
+            'id': 'id_enable_web_search'
+        })
+    )
+
     class Meta:
         model = Chatbot
-        fields = ['name', 'description', 'logo', 'bot_instructions', 'sample_questions', 'collect_email', 'collect_email_message']
+        fields = ['name', 'description', 'logo', 'bot_instructions', 'sample_questions', 'collect_email', 'collect_email_message', 'enable_web_search']
 
 class OTPVerificationForm(forms.Form):
     otp = forms.CharField(max_length=6, min_length=6, widget=forms.TextInput(attrs={

@@ -130,6 +130,37 @@
                                             }
                                         });
                                         </script>
+
+                                        <!-- Web Search Grounding -->
+                                        <div class="mb-3 mt-4 p-3 border rounded" style="background: linear-gradient(135deg, #f0f7ff 0%, #f5f0ff 100%);">
+                                            <div class="form-check form-switch mb-2">
+                                                {% if has_web_search_addon %}
+                                                {{ form.enable_web_search }}
+                                                {% else %}
+                                                <input type="checkbox" class="form-check-input" disabled>
+                                                {% endif %}
+                                                <label class="form-check-label fw-bold" for="id_enable_web_search">
+                                                    <i class="material-symbols-rounded align-middle me-1">travel_explore</i>
+                                                    Web Search Grounding
+                                                    {% if has_web_search_addon %}
+                                                    <span class="badge bg-success ms-1" style="font-size: 0.65rem; vertical-align: middle;">ACTIVE</span>
+                                                    {% else %}
+                                                    <span class="badge bg-secondary ms-1" style="font-size: 0.65rem; vertical-align: middle;">ADD-ON</span>
+                                                    {% endif %}
+                                                </label>
+                                            </div>
+                                            <small class="text-muted d-block mb-1">
+                                                Enable live Google Search results alongside your trained knowledge base. Your chatbot will be able to answer comparison questions, fetch market data, and provide up-to-date information.
+                                            </small>
+                                            {% if not has_web_search_addon %}
+                                            <small class="d-block mt-1">
+                                                <a href="{% url 'addons' %}" class="text-decoration-none" style="color: #7125BE; font-weight: 600;">
+                                                    <i class="material-symbols-rounded align-middle" style="font-size: 14px;">shopping_cart</i>
+                                                    Purchase Web Search Add-on to enable
+                                                </a>
+                                            </small>
+                                            {% endif %}
+                                        </div>
                                     </div>
                                 </div>
                             </div>

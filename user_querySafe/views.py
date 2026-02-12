@@ -9,6 +9,7 @@ import os
 import string
 import faiss
 from google import genai
+from google.genai.types import GenerateContentConfig, GoogleSearch, Tool
 from user_querySafe.chatbot.embedding_model import get_embedding_model
 from django.conf import settings
 from django.views.decorators.clickjacking import xframe_options_exempt
@@ -693,14 +694,22 @@ def chat_message(request):
                 'error': 'No active plan found. Please subscribe to a plan to continue using the chatbot.'
             })
 
-        # Check query limit BEFORE processing
+        # Check query limit BEFORE processing (base plan + add-on stacking)
         # Count total bot responses for this chatbot (across ALL visitors/conversations)
         total_bot_responses = Message.objects.filter(
             conversation__chatbot=chatbot,
             is_bot=True
         ).count()
-        
-        if total_bot_responses >= active_plan.no_of_query:
+
+        # Calculate effective limit: base plan + active extra_messages add-ons
+        try:
+            from user_querySafe.addon_utils import get_effective_limits
+            effective = get_effective_limits(chatbot.user, active_plan)
+            effective_query_limit = effective['no_of_query']
+        except Exception:
+            effective_query_limit = active_plan.no_of_query
+
+        if total_bot_responses >= effective_query_limit:
             return JsonResponse({
                 'error': 'This chatbot has reached its query limit. Please contact the chatbot owner to upgrade their plan.',
                 'limit_reached': True
@@ -815,24 +824,75 @@ def chat_message(request):
         # Inject custom bot instructions if set
         if hasattr(chatbot, 'bot_instructions') and chatbot.bot_instructions.strip():
             system_parts.append(f"\nCustom instructions from the chatbot owner:\n{chatbot.bot_instructions.strip()}")
+
+        # If web search is enabled, add instructions for using web data
+        web_search_enabled = getattr(chatbot, 'enable_web_search', False)
+        if web_search_enabled:
+            system_parts.append("")
+            system_parts.append("Web Search Grounding (ENABLED):")
+            system_parts.append("- You have access to live Google Search results alongside the knowledge base.")
+            system_parts.append("- ALWAYS prioritize the knowledge context over web results for product-specific questions.")
+            system_parts.append("- Use web search results for comparisons, market data, competitor information, or questions outside the knowledge base.")
+            system_parts.append("- Be transparent when using web data: e.g., 'According to recent web results...'")
+            system_parts.append("- Never fabricate web search results. If web results are not available, say so.")
+            system_parts.append("- Combine knowledge base and web data naturally when both are relevant.")
+
         system_instruction = "\n".join(system_parts)
 
-        # User prompt — left-aligned, no Python indentation
+        # User prompt
         prompt = (
             f"Previous conversation:\n{chat_context}\n\n"
             f"Knowledge context:\n{knowledge_context}\n\n"
             f"User question: {user_message}"
         )
 
+        # Build Gemini config - conditionally add Google Search tool
+        config_kwargs = {
+            "system_instruction": system_instruction,
+            "temperature": 0.3,
+        }
+        if web_search_enabled:
+            config_kwargs["tools"] = [Tool(google_search=GoogleSearch())]
+
+        gemini_config = GenerateContentConfig(**config_kwargs)
+
         # Get response from Gemini
         gemini_response = client.models.generate_content(
             model=settings.GEMINI_CHAT_MODEL,
             contents=[{"role": "user", "parts": [{"text": prompt}]}],
-            config={"system_instruction": system_instruction, "temperature": 0.3},
+            config=gemini_config,
         )
 
         bot_response = gemini_response.text
-        
+
+        # Extract grounding metadata if web search was used
+        web_sources = []
+        if web_search_enabled:
+            try:
+                for candidate in (gemini_response.candidates or []):
+                    grounding_meta = getattr(candidate, 'grounding_metadata', None)
+                    if grounding_meta:
+                        # Count search queries generated
+                        search_queries = getattr(grounding_meta, 'web_search_queries', []) or []
+                        if search_queries:
+                            from user_querySafe.models import WebSearchUsage
+                            WebSearchUsage.objects.create(
+                                chatbot=chatbot,
+                                query_count=len(search_queries),
+                            )
+
+                        # Extract source URLs from grounding chunks
+                        grounding_chunks = getattr(grounding_meta, 'grounding_chunks', []) or []
+                        for chunk in grounding_chunks:
+                            web_ref = getattr(chunk, 'web', None)
+                            if web_ref:
+                                web_sources.append({
+                                    'uri': getattr(web_ref, 'uri', ''),
+                                    'title': getattr(web_ref, 'title', ''),
+                                })
+            except Exception as gs_err:
+                print(f"Grounding metadata extraction error: {gs_err}")
+
         # Store bot response
         Message.objects.create(
             conversation=conversation,
@@ -843,12 +903,16 @@ def chat_message(request):
 
         # Update conversation last_updated
         conversation.save()
-        
-        response = JsonResponse({
+
+        response_data = {
             'answer': bot_response,
             'conversation_id': conversation.conversation_id,
-            'matches': matches
-        })
+            'matches': matches,
+        }
+        if web_sources:
+            response_data['web_sources'] = web_sources
+
+        response = JsonResponse(response_data)
         
         # Add CORS headers to the response
         response['Access-Control-Allow-Origin'] = '*'
