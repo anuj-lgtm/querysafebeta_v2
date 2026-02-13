@@ -279,7 +279,7 @@
   padding: 12px 16px;
   border-radius: 16px;
   word-wrap: break-word;
-  white-space: pre-wrap;
+  white-space: normal;
   font-size: 1rem;
   padding-bottom: 0px;
 }
@@ -292,12 +292,24 @@
   align-self: flex-end;
   border-bottom-right-radius: 0;
   text-align: right;
+  white-space: pre-wrap;
 }
 .mv-chatbot-bot-msg {
   background-color: #f3f0f8;
   align-self: flex-start;
   border-bottom-left-radius: 0;
 }
+/* Rich content in bot messages */
+.mv-chatbot-bot-msg table { border-collapse: collapse; width: 100%; margin: 8px 0; display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.mv-chatbot-bot-msg th, .mv-chatbot-bot-msg td { border: 1px solid #d4c8e8; padding: 6px 10px; text-align: left; font-size: 0.88rem; white-space: nowrap; }
+.mv-chatbot-bot-msg th { background: #e8ddf5; font-weight: 600; }
+.mv-chatbot-bot-msg tr:nth-child(even) { background: #faf8ff; }
+.mv-chatbot-bot-msg img { max-width: 100%; border-radius: 8px; margin: 6px 0; cursor: pointer; }
+.mv-chatbot-bot-msg pre { background: #2d2040; color: #e8ddf5; padding: 10px 12px; border-radius: 8px; overflow-x: auto; margin: 8px 0; font-size: 0.82rem; }
+.mv-chatbot-bot-msg code { background: #ede8f5; padding: 1px 4px; border-radius: 3px; font-size: 0.85em; }
+.mv-chatbot-bot-msg pre code { background: none; padding: 0; }
+.mv-chatbot-bot-msg ul, .mv-chatbot-bot-msg ol { padding-left: 20px; margin: 4px 0; }
+.mv-chatbot-bot-msg li { margin-bottom: 2px; }
 .mv-chatbot-source-msg {
   font-size: 0.8em;
   color: #666;
@@ -423,6 +435,8 @@
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.6/dist/purify.min.js"></script>
 <script>
+marked.setOptions({ breaks: true, gfm: true, headerIds: false, mangle: false });
+const mvDOMPurifyConfig = { ADD_ATTR: ['src', 'alt', 'colspan', 'rowspan'] };
 let mvChatHistory = [];
 let mvChatbotOpen = false;
 let mvGreetingShown = false;
@@ -458,14 +472,14 @@ function mvDisplayMessage(text, isUser = false, isSource = false) {
   const message = document.createElement('div');
   if (isSource) {
     message.classList.add('mv-chatbot-source-msg');
-    message.innerHTML = DOMPurify.sanitize(marked.parse(text));
+    message.innerHTML = DOMPurify.sanitize(marked.parse(text), mvDOMPurifyConfig);
   } else {
     message.classList.add('mv-chatbot-message');
     message.classList.add(isUser ? 'mv-chatbot-user-msg' : 'mv-chatbot-bot-msg');
     if (isUser) {
       message.textContent = text;
     } else {
-      message.innerHTML = DOMPurify.sanitize(marked.parse(text));
+      message.innerHTML = DOMPurify.sanitize(marked.parse(text), mvDOMPurifyConfig);
     }
   }
   chat.appendChild(message);

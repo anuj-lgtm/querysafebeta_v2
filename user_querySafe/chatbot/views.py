@@ -1,7 +1,11 @@
 import os
+import re
 import json
 import logging
 from django.contrib import messages
+
+_URL_PROTOCOL_RE = re.compile(r'^https?://', re.IGNORECASE)
+_DOMAIN_LIKE_RE = re.compile(r'^[\w][\w.-]+\.\w{2,}')
 
 logger = logging.getLogger(__name__)
 from django.http import JsonResponse
@@ -155,12 +159,25 @@ def create_chatbot(request):
                         if successful_uploads + url_count >= allowed_docs:
                             messages.warning(request, "Source limit reached.")
                             break
+                        if not _URL_PROTOCOL_RE.match(url):
+                            if _DOMAIN_LIKE_RE.match(url):
+                                url = 'https://' + url
+                            else:
+                                messages.warning(request, f"Skipped invalid URL: {url}")
+                                continue
                         ChatbotURL.objects.create(chatbot=chatbot, url=url, is_sitemap=False)
                         url_count += 1
 
                 if sitemap_url:
-                    ChatbotURL.objects.create(chatbot=chatbot, url=sitemap_url, is_sitemap=True)
-                    url_count += 1
+                    if not _URL_PROTOCOL_RE.match(sitemap_url):
+                        if _DOMAIN_LIKE_RE.match(sitemap_url):
+                            sitemap_url = 'https://' + sitemap_url
+                        else:
+                            messages.warning(request, f"Skipped invalid sitemap URL: {sitemap_url}")
+                            sitemap_url = ''
+                    if sitemap_url:
+                        ChatbotURL.objects.create(chatbot=chatbot, url=sitemap_url, is_sitemap=True)
+                        url_count += 1
             except Exception:
                 pass  # ChatbotURL model not yet available
 
@@ -480,6 +497,12 @@ def edit_chatbot(request, chatbot_id):
                         if total_sources + successful_uploads + new_url_count >= allowed_docs:
                             messages.warning(request, "Source limit reached.")
                             break
+                        if not _URL_PROTOCOL_RE.match(url):
+                            if _DOMAIN_LIKE_RE.match(url):
+                                url = 'https://' + url
+                            else:
+                                messages.warning(request, f"Skipped invalid URL: {url}")
+                                continue
                         ChatbotURL.objects.get_or_create(
                             chatbot=chatbot, url=url,
                             defaults={'is_sitemap': False}
@@ -487,11 +510,18 @@ def edit_chatbot(request, chatbot_id):
                         new_url_count += 1
 
                 if sitemap_url:
-                    ChatbotURL.objects.get_or_create(
-                        chatbot=chatbot, url=sitemap_url,
-                        defaults={'is_sitemap': True}
-                    )
-                    new_url_count += 1
+                    if not _URL_PROTOCOL_RE.match(sitemap_url):
+                        if _DOMAIN_LIKE_RE.match(sitemap_url):
+                            sitemap_url = 'https://' + sitemap_url
+                        else:
+                            messages.warning(request, f"Skipped invalid sitemap URL: {sitemap_url}")
+                            sitemap_url = ''
+                    if sitemap_url:
+                        ChatbotURL.objects.get_or_create(
+                            chatbot=chatbot, url=sitemap_url,
+                            defaults={'is_sitemap': True}
+                        )
+                        new_url_count += 1
             except Exception:
                 pass  # ChatbotURL model not yet available
 

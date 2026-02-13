@@ -54,3 +54,30 @@ textarea.form-control {
   font-size: 0.875rem; /* Small text size */
   margin-top: 0.5rem;
 }
+
+/* Required field indicators */
+.required-mark {
+  color: #dc3545;
+  font-weight: 700;
+  margin-left: 4px;
+  font-size: 1rem;
+}
+.field-error {
+  border-color: #dc3545 !important;
+  box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25) !important;
+}
+
+/* URL validation indicators */
+.url-valid {
+  color: #198754;
+  font-size: 0.85rem;
+}
+.url-invalid {
+  color: #dc3545;
+  font-size: 0.85rem;
+}
+.url-valid .material-symbols-rounded,
+.url-invalid .material-symbols-rounded {
+  font-size: 14px;
+  vertical-align: middle;
+}

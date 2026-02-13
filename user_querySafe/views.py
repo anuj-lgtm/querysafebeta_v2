@@ -816,10 +816,11 @@ def chat_message(request):
             "- For 'what is' or 'explain' questions, use a brief paragraph (3-5 sentences).",
             "- For 'how to', steps, or process questions, use a numbered list.",
             "- For listing features, benefits, or multiple items, use bullet points.",
-            "- For comparison questions, use a short paragraph or side-by-side bullets.",
+            "- For comparison questions, use a markdown table with headers when comparing 2+ items.",
+            "- When data has clear columns (prices, features, specs), always format it as a markdown table.",
             "- When the user asks to elaborate or says 'tell me more', expand with a detailed paragraph and examples from the knowledge context.",
             "- Never use more than 150 words unless the user explicitly asks for detail.",
-            "- Use markdown formatting (bold, bullets, numbered lists) for readability.",
+            "- Use markdown formatting (bold, bullets, numbered lists, tables) for readability.",
         ]
         # Inject custom bot instructions if set
         if hasattr(chatbot, 'bot_instructions') and chatbot.bot_instructions.strip():

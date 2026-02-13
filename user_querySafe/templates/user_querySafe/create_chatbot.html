@@ -137,7 +137,7 @@
                                         <div class="mb-4">
                                             <label for="id_name" class="form-label d-flex align-items-center">
                                                 <i class="material-symbols-rounded me-2 border rounded p-1">label</i>
-                                                Chatbot Name
+                                                Chatbot Name <span class="required-mark">*</span>
                                             </label>
                                             {{ form.name }}
                                             <small class="text-muted mt-1 d-block">Give it a clear name, e.g. "Acme Support Bot"</small>
@@ -146,7 +146,7 @@
                                             <label for="id_description" class="form-label d-flex align-items-center">
                                                 <i
                                                     class="material-symbols-rounded me-2 border rounded p-1">description</i>
-                                                Description
+                                                Description <span class="required-mark">*</span>
                                             </label>
                                             {{ form.description }}
                                             <small class="text-muted mt-1 d-block">Helps you identify it later; visitors won't see this.</small>
@@ -222,6 +222,7 @@
                                     <textarea name="website_urls" id="id_website_urls" class="form-control border px-3"
                                               rows="3" placeholder="https://example.com/about&#10;https://example.com/services&#10;https://example.com/faq"></textarea>
                                     <small class="text-muted mt-1 d-block">Enter webpage URLs to extract content from. One URL per line.</small>
+                                    <div id="url-validation-feedback" class="mt-1"></div>
                                 </div>
                                 <div class="mb-3">
                                     <label for="id_sitemap_url" class="form-label d-flex align-items-center">
@@ -236,6 +237,7 @@
                                         </button>
                                     </div>
                                     <small class="text-muted mt-1 d-block">Paste a sitemap.xml URL to auto-discover all pages.</small>
+                                    <div id="sitemap-validation-feedback" class="mt-1"></div>
                                 </div>
                                 <div id="sitemap-preview" class="border rounded-3 p-3" style="display: none;">
                                     <h6 class="mb-2"><i class="material-symbols-rounded align-middle me-2">list</i>Discovered Pages</h6>
@@ -360,10 +362,13 @@
 
                             <!-- Submit Button -->
                             <div class="d-grid gap-2">
-                                <button type="submit" class="btn btn-primary btn-lg">
+                                <button type="submit" id="create-chatbot-btn" class="btn btn-primary btn-lg" disabled>
                                     <i class="material-symbols-rounded align-middle me-2">smart_toy</i>
                                     Create Chatbot
                                 </button>
+                                <small id="form-readiness-hint" class="text-muted text-center" style="font-size:0.8rem;">
+                                    Fill in all required fields (<span style="color:#dc3545;font-weight:700;">*</span>) and provide at least one data source to enable this button.
+                                </small>
                             </div>
                     </form>
                 </div>
@@ -553,6 +558,7 @@
         }
 
         document.getElementById('id_name').scrollIntoView({ behavior: 'smooth', block: 'center' });
+        if (typeof checkFormReady === 'function') checkFormReady();
     }
 
     function previewLogo(input) {
@@ -728,31 +734,222 @@
         handleFiles(files);
     });
 
-    // Form validation on submit - allow if files, URLs, or goal text (for Goal Planner) provided.
-    document.querySelector('form').addEventListener('submit', function (e) {
-        const errorContainer = document.getElementById('file-error');
+    // ── URL validation helper ──
+    function isValidUrl(str) {
+        try {
+            const url = new URL(str);
+            return url.protocol === 'http:' || url.protocol === 'https:';
+        } catch (_) {
+            return false;
+        }
+    }
+
+    function looksLikeDomain(str) {
+        return /^[\w][\w.-]+\.\w{2,}/.test(str);
+    }
+
+    // ── Real-time URL textarea validation ──
+    const urlTextarea = document.getElementById('id_website_urls');
+    const urlFeedback = document.getElementById('url-validation-feedback');
+
+    urlTextarea.addEventListener('input', function() {
+        const lines = this.value.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+        if (lines.length === 0) {
+            urlFeedback.innerHTML = '';
+            this.classList.remove('field-error');
+            checkFormReady();
+            return;
+        }
+        let html = '';
+        let allValid = true;
+        lines.forEach(function(line) {
+            const safe = escapeHtml(line);
+            if (isValidUrl(line)) {
+                html += '<div class="url-valid"><span class="material-symbols-rounded">check_circle</span> ' + safe + '</div>';
+            } else {
+                allValid = false;
+                let hint = '';
+                if (looksLikeDomain(line)) {
+                    hint = ' -- did you mean <strong>https://' + safe + '</strong>?';
+                }
+                html += '<div class="url-invalid"><span class="material-symbols-rounded">error</span> ' + safe + ' <span style="font-size:0.8rem;">(must start with http:// or https://)</span>' + hint + '</div>';
+            }
+        });
+        urlFeedback.innerHTML = html;
+        if (allValid) {
+            this.classList.remove('field-error');
+        } else {
+            this.classList.add('field-error');
+        }
+        checkFormReady();
+    });
+
+    // ── Real-time sitemap URL validation ──
+    const sitemapInput = document.getElementById('id_sitemap_url');
+    const sitemapFeedback = document.getElementById('sitemap-validation-feedback');
+
+    sitemapInput.addEventListener('input', function() {
+        const val = this.value.trim();
+        if (!val) {
+            sitemapFeedback.innerHTML = '';
+            this.classList.remove('field-error');
+            checkFormReady();
+            return;
+        }
+        if (isValidUrl(val)) {
+            sitemapFeedback.innerHTML = '<div class="url-valid"><span class="material-symbols-rounded">check_circle</span> Valid URL</div>';
+            this.classList.remove('field-error');
+        } else {
+            let hint = '';
+            if (looksLikeDomain(val)) {
+                hint = ' -- did you mean <strong>https://' + escapeHtml(val) + '</strong>?';
+            }
+            sitemapFeedback.innerHTML = '<div class="url-invalid"><span class="material-symbols-rounded">error</span> Must start with http:// or https://' + hint + '</div>';
+            this.classList.add('field-error');
+        }
+        checkFormReady();
+    });
+
+    // ── Required field validation on input ──
+    const nameField = document.getElementById('id_name');
+    const descField = document.getElementById('id_description');
+
+    nameField.addEventListener('input', function() {
+        if (this.value.trim()) this.classList.remove('field-error');
+        checkFormReady();
+    });
+    descField.addEventListener('input', function() {
+        if (this.value.trim()) this.classList.remove('field-error');
+        checkFormReady();
+    });
+
+    // ── Central form readiness checker ──
+    const submitBtn = document.getElementById('create-chatbot-btn');
+    const readinessHint = document.getElementById('form-readiness-hint');
+
+    function checkFormReady() {
+        const nameOk = nameField.value.trim().length > 0;
+        const descOk = descField.value.trim().length > 0;
+
+        // Check URLs are valid (no invalid ones)
+        const urlLines = urlTextarea.value.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+        const urlsValid = urlLines.every(function(line) { return isValidUrl(line); });
+        const hasUrls = urlLines.length > 0 && urlsValid;
+
+        const sitemapVal = sitemapInput.value.trim();
+        const sitemapValid = !sitemapVal || isValidUrl(sitemapVal);
+        const hasSitemap = sitemapVal && isValidUrl(sitemapVal);
+
         const hasFiles = accumulatedFiles.files.length > 0;
-        const hasUrls = document.getElementById('id_website_urls').value.trim().length > 0;
-        const hasSitemap = document.getElementById('id_sitemap_url').value.trim().length > 0;
+
         const isGoalPlanner = document.getElementById('id_template_id').value === 'TMPL01';
         const goalTextEl = document.getElementById('id_goal_text');
         const hasGoalText = goalTextEl && goalTextEl.value.trim().length > 0;
 
+        const hasDataSource = hasFiles || hasUrls || hasSitemap || (isGoalPlanner && hasGoalText);
+
+        const ready = nameOk && descOk && hasDataSource && urlsValid && sitemapValid;
+
+        submitBtn.disabled = !ready;
+        readinessHint.style.display = ready ? 'none' : 'block';
+    }
+
+    // Also re-check when goal text changes (for Goal Planner template)
+    const goalTextEl = document.getElementById('id_goal_text');
+    if (goalTextEl) {
+        goalTextEl.addEventListener('input', checkFormReady);
+    }
+
+    // Re-check after files change (patch into existing handleFiles flow)
+    const origUpdateFilesUI = updateFilesUI;
+    updateFilesUI = function(files) {
+        origUpdateFilesUI(files);
+        checkFormReady();
+    };
+
+    // Re-check after file removal
+    const origRemoveFile = removeFile;
+    removeFile = function(fileName) {
+        origRemoveFile(fileName);
+        checkFormReady();
+    };
+
+    // Initial check on page load
+    checkFormReady();
+
+    // Form validation on submit (safety net)
+    document.querySelector('form').addEventListener('submit', function (e) {
+        const errorContainer = document.getElementById('file-error');
+        let blocked = false;
+
+        // Required fields check
+        if (!nameField.value.trim()) {
+            nameField.classList.add('field-error');
+            nameField.focus();
+            blocked = true;
+        }
+        if (!descField.value.trim()) {
+            descField.classList.add('field-error');
+            if (!blocked) descField.focus();
+            blocked = true;
+        }
+        if (blocked) {
+            e.preventDefault();
+            errorContainer.innerHTML = '<i class="material-symbols-rounded align-middle me-2">error</i> Please fill in all required fields marked with <span style="color:#dc3545;font-weight:700;">*</span>';
+            errorContainer.style.display = 'block';
+            return;
+        }
+
+        // URL format check
+        const urlLines = urlTextarea.value.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+        const invalidUrls = urlLines.filter(function(line) { return !isValidUrl(line); });
+        if (invalidUrls.length > 0) {
+            e.preventDefault();
+            urlTextarea.classList.add('field-error');
+            urlTextarea.focus();
+            errorContainer.innerHTML = '<i class="material-symbols-rounded align-middle me-2">error</i> Some URLs are invalid. All URLs must start with http:// or https://';
+            errorContainer.style.display = 'block';
+            return;
+        }
+
+        // Sitemap URL check
+        const sitemapVal = sitemapInput.value.trim();
+        if (sitemapVal && !isValidUrl(sitemapVal)) {
+            e.preventDefault();
+            sitemapInput.classList.add('field-error');
+            sitemapInput.focus();
+            errorContainer.innerHTML = '<i class="material-symbols-rounded align-middle me-2">error</i> Sitemap URL must start with http:// or https://';
+            errorContainer.style.display = 'block';
+            return;
+        }
+
+        // Data source check
+        const hasFiles = accumulatedFiles.files.length > 0;
+        const hasUrls = urlLines.length > 0;
+        const hasSitemap = sitemapVal.length > 0;
+        const isGoalPlanner = document.getElementById('id_template_id').value === 'TMPL01';
+        const goalEl = document.getElementById('id_goal_text');
+        const hasGoalText = goalEl && goalEl.value.trim().length > 0;
+
         if (!hasFiles && !hasUrls && !hasSitemap && !(isGoalPlanner && hasGoalText)) {
             e.preventDefault();
             if (isGoalPlanner) {
-                errorContainer.textContent = 'Please type your goals above, or upload documents / provide URLs.';
+                errorContainer.innerHTML = '<i class="material-symbols-rounded align-middle me-2">error</i> Please type your goals above, or upload documents / provide URLs.';
             } else {
-                errorContainer.textContent = 'Please upload at least one file or provide website URLs.';
+                errorContainer.innerHTML = '<i class="material-symbols-rounded align-middle me-2">error</i> Please upload at least one file or provide website URLs.';
             }
             errorContainer.style.display = 'block';
-        } else if (accumulatedFiles.files.length > allowedDocs) {
-            e.preventDefault();
-            errorContainer.textContent = "You can only upload " + allowedDocs + " file(s).";
-            errorContainer.style.display = 'block';
-        } else {
-            errorContainer.style.display = 'none';
+            return;
         }
+
+        if (accumulatedFiles.files.length > allowedDocs) {
+            e.preventDefault();
+            errorContainer.innerHTML = '<i class="material-symbols-rounded align-middle me-2">error</i> You can only upload ' + allowedDocs + ' file(s).';
+            errorContainer.style.display = 'block';
+            return;
+        }
+
+        errorContainer.style.display = 'none';
     });
 
     // Sitemap preview

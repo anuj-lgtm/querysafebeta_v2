@@ -240,6 +240,18 @@
                 border-bottom-left-radius: 0;
             }
 
+            /* Rich content in bot messages */
+            .mv-chatbot-bot-msg table { border-collapse: collapse; width: 100%; margin: 8px 0; display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+            .mv-chatbot-bot-msg th, .mv-chatbot-bot-msg td { border: 1px solid #d4c8e8; padding: 6px 10px; text-align: left; font-size: 0.88rem; white-space: nowrap; }
+            .mv-chatbot-bot-msg th { background: #e8ddf5; font-weight: 600; }
+            .mv-chatbot-bot-msg tr:nth-child(even) { background: #faf8ff; }
+            .mv-chatbot-bot-msg img { max-width: 100%; border-radius: 8px; margin: 6px 0; cursor: pointer; }
+            .mv-chatbot-bot-msg pre { background: #2d2040; color: #e8ddf5; padding: 10px 12px; border-radius: 8px; overflow-x: auto; margin: 8px 0; font-size: 0.82rem; }
+            .mv-chatbot-bot-msg code { background: #ede8f5; padding: 1px 4px; border-radius: 3px; font-size: 0.85em; }
+            .mv-chatbot-bot-msg pre code { background: none; padding: 0; }
+            .mv-chatbot-bot-msg ul, .mv-chatbot-bot-msg ol { padding-left: 20px; margin: 4px 0; }
+            .mv-chatbot-bot-msg li { margin-bottom: 2px; }
+
             #mv-chatbot-input-bar {
                 display: flex;
                 background-color: white;
@@ -785,7 +797,8 @@
                         });
                         const rawHtml = marked.parse(message);
                         // Sanitize HTML to prevent XSS from bot responses
-                        messageDiv.innerHTML = window.DOMPurify ? DOMPurify.sanitize(rawHtml) : rawHtml.replace(/<script[\s\S]*?<\/script>/gi, '').replace(/on\w+="[^"]*"/gi, '');
+                        const dpConfig = { ADD_ATTR: ['src', 'alt', 'colspan', 'rowspan'] };
+                        messageDiv.innerHTML = window.DOMPurify ? DOMPurify.sanitize(rawHtml, dpConfig) : rawHtml.replace(/<script[\s\S]*?<\/script>/gi, '').replace(/on\w+="[^"]*"/gi, '');
                     } catch (error) {
                         messageDiv.textContent = message;
                     }

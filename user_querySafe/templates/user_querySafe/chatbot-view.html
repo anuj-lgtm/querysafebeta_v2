@@ -9,6 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.6/dist/purify.min.js"></script>
+    <script>marked.setOptions({ breaks: true, gfm: true, headerIds: false, mangle: false });</script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -115,7 +116,7 @@
             padding: 12px 16px;
             border-radius: 16px;
             word-wrap: break-word;
-            white-space: pre-wrap;
+            white-space: normal;
             font-size: 0.95rem;
             line-height: 1.5;
         }
@@ -127,6 +128,7 @@
             color: #fff;
             align-self: flex-end;
             border-bottom-right-radius: 4px;
+            white-space: pre-wrap;
         }
         .chat-msg-bot {
             background-color: #f3f0f8;
@@ -134,6 +136,17 @@
             align-self: flex-start;
             border-bottom-left-radius: 4px;
         }
+        /* Rich content in bot messages */
+        .chat-msg-bot table { border-collapse: collapse; width: 100%; margin: 8px 0; display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        .chat-msg-bot th, .chat-msg-bot td { border: 1px solid #d4c8e8; padding: 6px 10px; text-align: left; font-size: 0.88rem; white-space: nowrap; }
+        .chat-msg-bot th { background: #e8ddf5; font-weight: 600; }
+        .chat-msg-bot tr:nth-child(even) { background: #faf8ff; }
+        .chat-msg-bot img { max-width: 100%; border-radius: 8px; margin: 6px 0; cursor: pointer; }
+        .chat-msg-bot pre { background: #2d2040; color: #e8ddf5; padding: 10px 12px; border-radius: 8px; overflow-x: auto; margin: 8px 0; font-size: 0.82rem; }
+        .chat-msg-bot code { background: #ede8f5; padding: 1px 4px; border-radius: 3px; font-size: 0.85em; }
+        .chat-msg-bot pre code { background: none; padding: 0; }
+        .chat-msg-bot ul, .chat-msg-bot ol { padding-left: 20px; margin: 4px 0; }
+        .chat-msg-bot li { margin-bottom: 2px; }
 
         .chat-source-msg {
             font-size: 0.82em;
@@ -532,15 +545,16 @@
     window.displayMessage = function(text, isUser, isSource) {
         var chat = document.getElementById('chat-messages');
         var msg = document.createElement('div');
+        var dpConfig = { ADD_ATTR: ['src', 'alt', 'colspan', 'rowspan'] };
         if (isSource) {
             msg.className = 'chat-source-msg';
-            msg.innerHTML = window.DOMPurify ? DOMPurify.sanitize(marked.parse(text)) : text;
+            msg.innerHTML = window.DOMPurify ? DOMPurify.sanitize(marked.parse(text), dpConfig) : text;
         } else {
             msg.className = 'chat-message ' + (isUser ? 'chat-msg-user' : 'chat-msg-bot');
             if (isUser) {
                 msg.textContent = text;
             } else {
-                msg.innerHTML = window.DOMPurify ? DOMPurify.sanitize(marked.parse(text)) : text;
+                msg.innerHTML = window.DOMPurify ? DOMPurify.sanitize(marked.parse(text), dpConfig) : text;
             }
         }
         chat.appendChild(msg);
